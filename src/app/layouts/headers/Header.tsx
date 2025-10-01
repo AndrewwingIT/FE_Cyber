@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { Security } from '@mui/icons-material';
+import { Link as RouterLink } from 'react-router-dom';
 
 const Header: React.FC = () => {
   return (
@@ -13,18 +14,20 @@ const Header: React.FC = () => {
           </Typography>
         </Box>
         <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
-          <Button color="inherit">Trang chủ</Button>
+          <Button color="inherit" component={RouterLink} to="/">Trang chủ</Button>
           <Button color="inherit">Khóa học</Button>
           <Button color="inherit">Bảng giá</Button>
           <Button color="inherit">Câu hỏi thường gặp</Button>
           <Button color="inherit">Về chúng tôi</Button>
-          <Button color="inherit">Đăng nhập</Button>
+          <Button color="inherit" component={RouterLink} to="/login">Đăng nhập</Button>
         </Box>
-        <Button 
-          variant="contained" 
-          sx={{ 
-            ml: 2, 
-            backgroundColor: '#f472b6', 
+        <Button
+          variant="contained"
+          component={RouterLink}
+          to="/register"
+          sx={{
+            ml: 2,
+            backgroundColor: '#f472b6',
             '&:hover': { backgroundColor: '#ec4899' },
             borderRadius: '25px'
           }}

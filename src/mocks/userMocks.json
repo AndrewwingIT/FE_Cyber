@@ -1,0 +1,106 @@
+{
+        "billiardMatchID": 101,
+        "billiardTableID": "TABLE-05",
+        "modeID": 2,
+        "byStaff": "STAFF-007",
+        "byCustomer": "CUST-1234",
+        "setUp": "Standard 9-Ball Match, Best of 5 sets",
+        "winner": null,
+        "startTime": "2025-06-24T19:10:00Z",
+        "endTime": null,
+        "totalSet": 5,
+        "status": "ongoing",
+        "code": "M-A1B2",
+        "sets": [
+            {
+                "billiardMatchID": 101,
+                "gameSetID": 201,
+                "gameSetNo": 1,
+                "raceTo": 4,
+                "winner": "TEAM B",
+                "startTime": "2025-06-25T10:32:00Z",
+                "endTime": "2025-06-25T10:55:00Z",
+                "status": "completed"
+            },
+            {
+                "billiardMatchID": 101,
+                "gameSetID": 202,
+                "gameSetNo": 2,
+                "raceTo": 4,
+                "winner": null,
+                "startTime": "2025-06-25T10:57:00Z",
+                "endTime": null,
+                "status": "ongoing"
+            },
+            {
+                "billiardMatchID": 101,
+                "gameSetID": 203,
+                "gameSetNo": 3,
+                "raceTo": 4,
+                "winner": null,
+                "startTime": "2025-06-25T10:30:00Z",
+                "endTime": null,
+                "status": "pending"
+            }
+        ],
+        "teams": [
+            {
+                "billiardMatchID": 101,
+                "teamID": 1,
+                "name": "TEAM A",
+                "totalMember": 2,
+                "totalScore": 0,
+                "createAt": "2025-06-25T10:30:00Z",
+                "status": "pending",
+                "players": [
+                    {
+                        "playerID": 1001,
+                        "name": "Nguyễn Văn A",
+                        "totalScore": 0,
+                        "customerID": "CUST-1234",
+                        "status": "draw",
+                        "createAt": "2025-06-25T10:30:00Z",
+                        "teamID": 1
+                    },
+                    {
+                        "playerID": 1002,
+                        "name": "Trần Thị B",
+                        "totalScore": 0,
+                        "customerID": "CUST-5678",
+                        "status": "draw",
+                        "createAt": "2025-06-25T10:30:00Z",
+                        "teamID": 1
+                    }
+                ]
+            },
+            {
+                "billiardMatchID": 101,
+                "teamID": 2,
+                "name": "TEAM B",
+                "totalMember": 2,
+                "totalScore": 1,
+                "createAt": "2025-06-25T10:30:00Z",
+                "status": "pending",
+                "players": [
+                    {
+                        "playerID": 1003,
+                        "name": "Lê Văn C",
+                        "totalScore": 0,
+                        "customerID": "CUST-4321",
+                        "status": "draw",
+                        "createAt": "2025-06-25T10:30:00Z",
+                        "teamID": 2
+                    },
+                    {
+                        "playerID": 1004,
+                        "name": "Phạm Thị D",
+                        "totalScore": 0,
+                        "customerID": "CUST-8765",
+                        "status": "draw",
+                        "createAt": "2025-06-25T10:30:00Z",
+                        "teamID": 2
+                    }
+                ]
+            }
+        ]
+    }
