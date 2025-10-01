@@ -1,10 +1,5 @@
 ﻿import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
-import Header from "./app/layouts/headers/Header";
-import Hero from "./app/components/Hero";
-import Features from "./app/components/Features";
-import Product from "./app/pages/products/Product";
-import CTA from "./app/components/CTA";
-import Footer from "./app/layouts/footers/Footer";
+import HomePage from "./app/pages/homes/HomePage";
 
 const theme = createTheme({
   palette: {
@@ -35,18 +30,13 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className="App" style={{ 
-        width: '100%', 
-        margin: 0, 
-        padding: 0, 
-        overflowX: 'hidden' 
+      <div className="App" style={{
+        width: '100%',
+        margin: 0,
+        padding: 0,
+        overflowX: 'hidden'
       }}>
-        <Header />
-        <Hero />
-        <Features />
-        <Product />
-        <CTA />
-        <Footer />
+        <HomePage />
       </div>
     </ThemeProvider>
   );

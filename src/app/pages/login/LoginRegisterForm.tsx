@@ -10,6 +10,7 @@ import {
   Paper,
   Stack,
   Divider,
+  Toolbar,
 } from '@mui/material';
 import { Visibility, VisibilityOff, Google, Apple, Facebook } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
@@ -34,10 +35,12 @@ const LoginRegisterForm: React.FC<AuthFormProps> = ({ mode }) => {
         color: '#fff',
         display: 'flex',
         alignItems: 'center',
-        pt: 10,
+        pt: 0,
       }}
     >
       <Header />
+      {/* Spacer to offset fixed AppBar so content starts at the same Y on all pages */}
+      <Toolbar />
       <Container maxWidth="lg">
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', gap: { xs: 4, md: 8 } }}>
           <Box sx={{ flex: 1 }}>
