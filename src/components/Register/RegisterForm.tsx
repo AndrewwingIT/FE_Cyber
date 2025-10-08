@@ -42,24 +42,38 @@ const RegisterForm: React.FC<AuthFormProps> = ({ mode }) => {
       {/* Spacer to offset fixed AppBar so content starts at the same Y on all pages */}
       <Toolbar />
       <Container maxWidth="lg">
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', gap: { xs: 4, md: 8 } }}>
-          <Box sx={{ flex: 1 }}>
-            <Stack spacing={2}>
-              <Typography variant="h2" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-                {isRegister ? 'Tạo tài khoản' : 'Chào mừng trở lại'}
-              </Typography>
-              <Typography variant="h2" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-                của bạn tại đây!
-              </Typography>
-              <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                {isRegister
-                  ? 'Đăng kí để trải nghiệm đầy đủ các tính năng của Cyber Rampart.'
-                  : 'Đăng nhập để tiếp tục khám phá Cyber Rampart.'}
-              </Typography>
-            </Stack>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          alignItems: 'center',
+          gap: { xs: 4, md: 8 },
+          minHeight: 600,
+        }}>
+          {/* Left side: chỉ hình lớn */}
+          <Box sx={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 500,
+          }}>
+            <img
+                src="/images/register.jpg"
+                alt="Register Illustration"
+                style={{
+                    width: '100%',
+                    maxWidth: '520px',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    display: 'block',
+                    borderRadius: '24px',
+                    boxShadow: '0 8px 32px 0 rgba(0,0,0,0.25)',
+                    background: 'transparent',
+                }}
+            />
           </Box>
-
-          <Box sx={{ width: { xs: '100%', md: 420 } }}>
+          {/* Right side: form */}
+          <Box sx={{ width: { xs: '100%', md: 420 }, zIndex: 3 }}>
             <Paper elevation={8} sx={{ p: 3, borderRadius: 3, backgroundColor: 'rgba(28,28,28,0.9)', backdropFilter: 'blur(6px)' }}>
               <Stack spacing={2}>
                 <TextField
