@@ -14,13 +14,13 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff, Google, Apple, Facebook } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
-import Header from '../../layouts/headers/Header';
+import Header from '../../app/layouts/headers/Header';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
 }
 
-const LoginRegisterForm: React.FC<AuthFormProps> = ({ mode }) => {
+const RegisterForm: React.FC<AuthFormProps> = ({ mode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -159,4 +159,4 @@ const LoginRegisterForm: React.FC<AuthFormProps> = ({ mode }) => {
   );
 };
 
-export default LoginRegisterForm;
+export default RegisterForm;

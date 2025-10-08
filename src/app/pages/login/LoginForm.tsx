@@ -1,8 +1,8 @@
 import React from 'react';
-import LoginRegisterForm from './LoginRegisterForm';
+import RegisterForm from '../../../components/Register/RegisterForm';
 
 const LoginForm: React.FC = () => {
-  return <LoginRegisterForm mode="login" />;
+  return <RegisterForm mode="login" />;
 };
 
 export default LoginForm;

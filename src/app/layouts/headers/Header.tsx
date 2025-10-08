@@ -16,7 +16,7 @@ const Header: React.FC = () => {
         <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
           <Button color="inherit" component={RouterLink} to="/">Trang chủ</Button>
           <Button color="inherit">Khóa học</Button>
-          <Button color="inherit">Bảng giá</Button>
+          <Button color="inherit" component={RouterLink} to="/price">Bảng giá</Button>
           <Button color="inherit">Câu hỏi thường gặp</Button>
           <Button color="inherit">Về chúng tôi</Button>
           <Button color="inherit" component={RouterLink} to="/login">Đăng nhập</Button>
