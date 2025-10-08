@@ -1,5 +1,10 @@
 import RegisterForm from "../../../components/Register/RegisterForm";
+import AuthLayout from "../../layouts/AuthLayout";
 
-export default function RegisterPage() {
-  return <RegisterForm mode="register" />;
-}
+const RegisterPage = () => (
+  <AuthLayout mode='register'>
+    <RegisterForm />
+  </AuthLayout>
+);
+
+export default RegisterPage;
