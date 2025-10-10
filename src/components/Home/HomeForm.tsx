@@ -20,8 +20,8 @@ const HomeForm: React.FC = () => {
     },
     {
       title: "BASIC",
-      price: "$28",
-      subPrice: "/Tháng Hoặc $280 /năm",
+      price: plan === "month" ? "$28" : "$280",
+      subPrice: plan === "month" ? "/Tháng" : "/Năm",
       features: [
         { text: "Quyền truy cập vào các khóa học dành cho người mới bắt đầu.", active: true },
         { text: "Kiến thức cơ bản về nhận diện lừa đảo trực tuyến và thủ thuật lừa đảo.", active: true },
@@ -31,8 +31,8 @@ const HomeForm: React.FC = () => {
     },
     {
       title: "PLUS",
-      price: "$35",
-      subPrice: "/Tháng Hoặc $350 /năm",
+      price: plan === "month" ? "$35" : "$350",
+      subPrice: plan === "month" ? "/Tháng" : "/Năm",
       highlight: true,
       features: [
         { text: "Mọi thứ đều đơn giản.", active: true },
@@ -44,8 +44,8 @@ const HomeForm: React.FC = () => {
     },
     {
       title: "PREMIUM",
-      price: "$49",
-      subPrice: "/Tháng Hoặc $490 /năm",
+      price: plan === "month" ? "$49" : "$490",
+      subPrice: plan === "month" ? "/Tháng" : "/Năm",
       features: [
         { text: "Tất cả những gì có trong gói Plus.", active: true },
         { text: "Quyền truy cập vào các khóa học cấp độ nâng cao.", active: true },
@@ -55,6 +55,7 @@ const HomeForm: React.FC = () => {
       ],
     },
   ];
+  
   return (
     <Box sx={{ 
       minHeight: '100vh', 
