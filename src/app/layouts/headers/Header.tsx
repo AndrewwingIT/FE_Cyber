@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
-import { Security } from '@mui/icons-material';
+import logo from '../../../assets/logo.svg';
 import { Link as RouterLink } from 'react-router-dom';
 
 const Header: React.FC = () => {
@@ -8,7 +8,7 @@ const Header: React.FC = () => {
     <AppBar position="fixed" sx={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(10px)' }}>
       <Toolbar>
         <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <Security sx={{ mr: 1, color: '#06b6d4' }} />
+          <img src={logo} alt="Cyber Rampart Logo" style={{ marginRight: '8px', width: '100px', height: '100px' }} />
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
             CYBER RAMPART
           </Typography>

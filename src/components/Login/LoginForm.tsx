@@ -29,7 +29,7 @@ const LoginForm: React.FC = () => {
       } else {
         toast.error("Không nhận được token!");
       }
-    } catch (error) {
+    } catch {
       toast.error("Đăng nhập thất bại!");
     } finally {
       setLoading(false);
