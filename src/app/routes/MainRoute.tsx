@@ -4,12 +4,14 @@ import App from '../../App';
 import RegisterPage from '../pages/register/RegisterPage';
 import PricePage from '../pages/price/PricePage';
 import LoginPage from '../pages/login/LoginPage';
+import AdminDashboard from '../pages/admin/AdminDashboard';
 
 const router = createBrowserRouter([
   { path: '/', element: <App /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/price', element: <PricePage /> },
+  { path: '/admin', element: <AdminDashboard /> },
 ]);
 
 const MainRoute: React.FC = () => {
