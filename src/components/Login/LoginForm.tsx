@@ -24,8 +24,28 @@ const LoginForm: React.FC = () => {
       const res = await axiosInstance.post('/api/Auth/login', { email, password });
       if (res.data?.token) {
         sessionStorage.setItem('token', res.data.token);
+        sessionStorage.setItem('userEmail', email);
+        
+        // Lưu thông tin role và user info
+        if (res.data?.user) {
+          sessionStorage.setItem('userRole', res.data.user.role || 'User');
+          sessionStorage.setItem('userName', res.data.user.firstName || email.split('@')[0]);
+        } else {
+          // Fallback: kiểm tra email để xác định role
+          const isAdmin = email === 'admin@gmail.com';
+          sessionStorage.setItem('userRole', isAdmin ? 'Admin' : 'User');
+          sessionStorage.setItem('userName', isAdmin ? 'Admin' : email.split('@')[0]);
+        }
+        
         toast.success("Đăng nhập thành công!");
-        navigate("/");
+        
+        // Redirect dựa trên role
+        const userRole = sessionStorage.getItem('userRole');
+        if (userRole === 'Admin') {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
       } else {
         toast.error("Không nhận được token!");
       }

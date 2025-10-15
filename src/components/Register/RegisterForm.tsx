@@ -54,7 +54,6 @@ const handleRegister = async () => {
   setLoading(true);
   try {
     await axiosInstance.post('/api/Auth/register', {
-      tenantId: 0,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.trim(),

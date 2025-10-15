@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "https://localhost:7106", // Đổi thành URL API của bạn nếu cần
+  baseURL: "https://user-protection.onrender.com/", // Đổi thành URL API của bạn nếu cần
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",

@@ -16,6 +16,8 @@ import {
   Settings as SettingsIcon,
   Dashboard as DashboardIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -23,6 +25,7 @@ interface AdminLayoutProps {
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const navigate = useNavigate();
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -33,9 +36,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   };
 
   const handleLogout = () => {
-    // Implement logout logic
-    console.log('Logout clicked');
+    // Xóa tất cả thông tin user khỏi sessionStorage
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('userEmail');
+    sessionStorage.removeItem('userRole');
+    sessionStorage.removeItem('userName');
+    
     handleClose();
+    toast.success("Đăng xuất thành công!");
+    navigate('/');
   };
 
   return (
