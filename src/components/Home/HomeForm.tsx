@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Box, Container, Typography, Button, Card, CardContent, Avatar, Rating, Stack } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import PriceCard from '../Pricing/PriceCard';
 import Miki from '../../assets/miki.svg';
 import ThumbConcept from '../../assets/thumb-concept-9.svg';
 
 const HomeForm: React.FC = () => {
   const [plan, setPlan] = useState<"month" | "year">("month");
+  const navigate = useNavigate();
   
   const priceData = [
     {
@@ -371,6 +373,15 @@ const HomeForm: React.FC = () => {
                   px: 4,
                   py: 1.5,
                   fontWeight: 'bold'
+                }}
+                onClick={() => {
+                  const token = sessionStorage.getItem('token');
+                  if (!token) {
+                    navigate('/login');
+                  } else {
+                    // Download file (placeholder)
+                    window.open('/downloads/cyber-rampart.exe', '_blank');
+                  }
                 }}
               >
                 Tải xuống

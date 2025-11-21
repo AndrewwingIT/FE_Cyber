@@ -44,7 +44,18 @@ const LoginForm: React.FC = () => {
         if (userRole === 'Admin') {
           navigate("/admin");
         } else {
-          navigate("/");
+          // Redirect sang payment nếu chưa thanh toán
+          const paymentInfo = sessionStorage.getItem('paymentInfo');
+          if (!paymentInfo) {
+            navigate("/payment");
+          } else {
+            const info = JSON.parse(paymentInfo);
+            if (info.status !== 'completed') {
+              navigate("/payment");
+            } else {
+              navigate("/");
+            }
+          }
         }
       } else {
         toast.error("Không nhận được token!");
