@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Container, Typography, IconButton } from '@mui/material';
-import { Security, Facebook, Twitter, Instagram, YouTube, LinkedIn } from '@mui/icons-material';
-
+import {Facebook, Twitter, Instagram, YouTube, LinkedIn } from '@mui/icons-material';
+import Logo from '../../../assets/logo.svg';
 const Footer: React.FC = () => {
   const socialLinks = [
     { icon: <Facebook />, color: '#1877f2' },
@@ -22,7 +22,7 @@ const Footer: React.FC = () => {
         }}>
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Security sx={{ mr: 1, color: '#06b6d4' }} />
+              <img src={Logo} alt="Cyber Rampart Logo" style={{ marginRight: '8px', width: '100px', height: '100px' }} />
               <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#f472b6' }}>
                 CYBER RAMPART
               </Typography>
