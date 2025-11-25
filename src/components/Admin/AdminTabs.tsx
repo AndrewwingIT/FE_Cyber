@@ -6,7 +6,8 @@ import {
   Subscriptions as SubscribeIcon,
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Payment as PaymentIcon
 } from '@mui/icons-material';
 
 interface TabPanelProps {
@@ -85,6 +86,11 @@ const AdminTabs: React.FC<AdminTabsProps> = ({ currentTab, onTabChange, children
           <Tab 
             label="Tenants" 
             icon={<LinkIcon />}
+            iconPosition="start"
+          />
+          <Tab 
+            label="Payments" 
+            icon={<PaymentIcon />}
             iconPosition="start"
           />
         </Tabs>

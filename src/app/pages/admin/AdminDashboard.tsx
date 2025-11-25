@@ -5,6 +5,7 @@ import DashboardStats from '../../../components/Admin/DashboardStats';
 import AdminTabs, { TabPanel } from '../../../components/Admin/AdminTabs';
 import AdminContent from '../../../components/Admin/AdminContent';
 import AdminDialog from '../../../components/Admin/AdminDialog';
+import AdminPaymentManagement from '../../../components/Admin/AdminPaymentManagement';
 
 interface User {
   id: number;
@@ -218,6 +219,9 @@ const AdminDashboard: React.FC = () => {
                 trustedLinks={trustedLinks}
                 tenants={tenants}
               />
+            </TabPanel>
+            <TabPanel value={currentTab} index={6}>
+              <AdminPaymentManagement />
             </TabPanel>
           </AdminTabs>
 
