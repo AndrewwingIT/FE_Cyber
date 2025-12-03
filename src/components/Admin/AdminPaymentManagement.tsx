@@ -40,13 +40,22 @@ const AdminPaymentManagement: React.FC = () => {
     setLoading(true);
     try {
       const response = await PaymentService.getAllPayments();
-      if (response.success && Array.isArray(response.data)) {
-        setPayments(response.data);
-      } else if (response.success && response.data) {
-        setPayments([response.data]);
+      if (response?.success) {
+        if (Array.isArray(response.data)) {
+          setPayments(response.data);
+        } else if (response.data) {
+          setPayments([response.data]);
+        } else {
+          setPayments([]);
+        }
+      } else {
+        setPayments([]);
+        toast.warning(response?.message || 'Không có dữ liệu thanh toán');
       }
-    } catch {
+    } catch (err) {
+      console.error('loadPayments error', err);
       toast.error('Lỗi khi tải danh sách thanh toán');
+      setPayments([]);
     } finally {
       setLoading(false);
     }
@@ -72,34 +81,40 @@ const AdminPaymentManagement: React.FC = () => {
     try {
       setLoading(true);
       const response = await PaymentService.updatePaymentStatus(
-        selectedPayment.orderId,
+        selectedPayment.orderId ?? (selectedPayment as any).id,
         newStatus,
         notes
       );
 
-      if (response.success) {
+      if (response?.success) {
         toast.success('Cập nhật trạng thái thành công!');
-        
-        // Gửi email thông báo
+
+        // Gửi email thông báo (không block flow nếu lỗi)
         if (selectedPayment.userEmail) {
-          await EmailService.sendPaymentConfirmation(
-            selectedPayment.userEmail,
-            {
-              orderId: selectedPayment.orderId,
-              packageName: selectedPayment.packageName,
-              status: newStatus,
-              amount: selectedPayment.amount,
-            }
-          );
+          try {
+            await EmailService.sendPaymentConfirmation(
+              selectedPayment.userEmail,
+              {
+                orderId: selectedPayment.orderId,
+                packageName: selectedPayment.packageName,
+                status: newStatus,
+                amount: selectedPayment.amount,
+              }
+            );
+          } catch (emailErr) {
+            console.error('Email send error', emailErr);
+            toast.info('Cập nhật thành công nhưng không gửi được email thông báo');
+          }
         }
 
         // Reload danh sách
         await loadPayments();
         handleCloseDialog();
       } else {
-        toast.error(response.message);
+        toast.error(response?.message || 'Cập nhật trạng thái thất bại');
       }
-    } catch {
+    } catch (err) {
+      console.error('handleUpdateStatus error', err);
       toast.error('Lỗi khi cập nhật trạng thái');
     } finally {
       setLoading(false);
@@ -143,6 +158,13 @@ const AdminPaymentManagement: React.FC = () => {
     );
   }
 
+  const formatAmount = (amount: number | string | undefined) => {
+    if (amount == null || amount === '') return '-';
+    const n = typeof amount === 'string' ? Number(amount) : amount;
+    if (Number.isNaN(n)) return String(amount);
+    return n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+  };
+
   return (
     <Box>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -179,32 +201,35 @@ const AdminPaymentManagement: React.FC = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              payments.map((payment) => (
-                <TableRow key={payment.id} hover>
-                  <TableCell>{payment.orderId}</TableCell>
-                  <TableCell>{payment.userEmail}</TableCell>
-                  <TableCell>{payment.packageName}</TableCell>
-                  <TableCell>{payment.amount}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getStatusLabel(payment.status)}
-                      color={getStatusColor(payment.status)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>{new Date(payment.createdAt).toLocaleDateString('vi-VN')}</TableCell>
-                  <TableCell align="center">
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => handleOpenDialog(payment)}
-                      disabled={payment.status === 'completed'}
-                    >
-                      {payment.status === 'completed' ? 'Đã xác nhận' : 'Xác nhận'}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              payments.map((payment) => {
+                const key = payment.orderId ?? (payment as any).id ?? `${payment.userEmail}-${payment.createdAt}`;
+                return (
+                  <TableRow key={key} hover>
+                    <TableCell>{payment.orderId ?? (payment as any).id}</TableCell>
+                    <TableCell>{payment.userEmail ?? '-'}</TableCell>
+                    <TableCell>{payment.packageName ?? '-'}</TableCell>
+                    <TableCell>{formatAmount(payment.amount)}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getStatusLabel(payment.status)}
+                        color={getStatusColor(payment.status)}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{payment.createdAt ? new Date(payment.createdAt).toLocaleDateString('vi-VN') : '-'}</TableCell>
+                    <TableCell align="center">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleOpenDialog(payment)}
+                        disabled={loading || payment.status === 'completed'}
+                      >
+                        {payment.status === 'completed' ? 'Đã xác nhận' : 'Xác nhận'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -222,13 +247,13 @@ const AdminPaymentManagement: React.FC = () => {
           {selectedPayment && (
             <>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Mã đơn:</strong> {selectedPayment.orderId}
+                <strong>Mã đơn:</strong> {selectedPayment.orderId ?? (selectedPayment as any).id}
               </Typography>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Email:</strong> {selectedPayment.userEmail}
+                <strong>Email:</strong> {selectedPayment.userEmail ?? '-'}
               </Typography>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Gói:</strong> {selectedPayment.packageName} ({selectedPayment.amount})
+                <strong>Gói:</strong> {selectedPayment.packageName ?? '-'} ({formatAmount(selectedPayment.amount)})
               </Typography>
 
               <TextField
@@ -257,7 +282,7 @@ const AdminPaymentManagement: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Hủy</Button>
+          <Button onClick={handleCloseDialog} disabled={loading}>Hủy</Button>
           <Button
             onClick={handleUpdateStatus}
             variant="contained"

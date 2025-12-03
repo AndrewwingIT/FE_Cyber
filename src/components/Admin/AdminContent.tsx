@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table, TableHead, TableRow, TableCell, TableBody,
   IconButton, Tooltip, Chip, Box, Dialog, DialogTitle,
-  DialogContent, DialogActions, Button, Typography, Badge
+  DialogContent, DialogActions, Button, Typography, Tabs, Tab, CircularProgress, TextField
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import ViewIcon from '@mui/icons-material/Visibility';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PeopleIcon from '@mui/icons-material/People';
@@ -17,24 +16,77 @@ interface AdminContentProps {
   onOpenDialog: (type: 'add' | 'edit' | 'view', item?: any) => void;
   features: any[];
   subscriptions: any[];
-  suspiciousLinks: any[];
-  trustedLinks: any[];
+  suspiciousLinks?: any[];
+  suspiciousRecent?: any[];
+  suspiciousPhishing?: any[];
   tenants: any[];
+  trustedLinks: any[];
   onDelete?: (type: string, id: number) => void;
+  onPromoteToPhishing?: (url: string) => void;
+  onUpdatePhishingStatus?: (suspiciousId: number, status: string) => void;
+  onReportLink?: (payload: { url: string; pageTitle?: string; reason?: string }) => void;
+  loadingSuspiciousRecent?: boolean;
+  loadingSuspiciousPhishing?: boolean;
+  loadSuspiciousRecent?: () => Promise<void>;
+  loadSuspiciousPhishing?: () => Promise<void>;
 }
+
+const getRiskLevelColor = (level?: string): 'default' | 'error' | 'warning' | 'info' | 'success' => {
+  if (!level) return 'default';
+  const l = String(level).toLowerCase();
+  if (l === 'critical') return 'error';
+  if (l === 'high') return 'warning';
+  if (l === 'medium') return 'info';
+  if (l === 'low') return 'success';
+  return 'default';
+};
 
 const AdminContent: React.FC<AdminContentProps> = ({
   currentTab,
   onOpenDialog,
   features,
   subscriptions,
-  suspiciousLinks,
-  trustedLinks,
+  suspiciousRecent = [],
+  suspiciousPhishing = [],
   tenants,
-  onDelete
+  trustedLinks,
+  onDelete,
+  onPromoteToPhishing,
+  onUpdatePhishingStatus,
+  onReportLink,
+  loadingSuspiciousRecent,
+  loadingSuspiciousPhishing,
+  loadSuspiciousRecent,
+  loadSuspiciousPhishing
 }) => {
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ type: string; id: number; name?: string } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [itemToConfirm, setItemToConfirm] = useState<any | null>(null);
+  const [suspiciousSubTab, setSuspiciousSubTab] = useState(0);
+
+  // report dialog
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportForm, setReportForm] = useState({ url: '', pageTitle: '', reason: '' });
+  const [reportLoading, setReportLoading] = useState(false);
+
+  // track which tabs have been fetched to avoid re-fetching
+  const [fetchedRecent, setFetchedRecent] = useState(false);
+  const [fetchedPhishing, setFetchedPhishing] = useState(false);
+
+  // load data only once per sub-tab when entering Suspicious Links tab
+  useEffect(() => {
+    if (currentTab !== 2) return; // only run on Suspicious Links tab
+
+    if (suspiciousSubTab === 0 && !fetchedRecent) {
+      // load recent only once
+      loadSuspiciousRecent?.();
+      setFetchedRecent(true);
+    } else if (suspiciousSubTab === 1 && !fetchedPhishing) {
+      // load phishing only once
+      loadSuspiciousPhishing?.();
+      setFetchedPhishing(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTab, suspiciousSubTab]);
 
   const getStatusColor = (status: string) => {
     if (!status) return 'default';
@@ -45,27 +97,187 @@ const AdminContent: React.FC<AdminContentProps> = ({
     return 'info';
   };
 
-  // Open confirm dialog and store item
-  const openDeleteConfirm = (type: string, id: number, name?: string) => {
-    setItemToDelete({ type, id, name });
-    setDeleteConfirmOpen(true);
+  const openConfirm = (type: string, id: any, name?: string) => {
+    setItemToConfirm({ type, id, name });
+    setConfirmOpen(true);
   };
 
-  const cancelDelete = () => {
-    setDeleteConfirmOpen(false);
-    setItemToDelete(null);
+  const cancelConfirm = () => {
+    setConfirmOpen(false);
+    setItemToConfirm(null);
   };
 
-  const confirmDelete = async () => {
-    if (!itemToDelete) return;
-    const { type, id } = itemToDelete;
+  const confirmAction = async () => {
+    if (!itemToConfirm) return;
+    const { type, id } = itemToConfirm;
     try {
-      await onDelete?.(type, id);
+      if (type === 'promote') {
+        await onPromoteToPhishing?.(id);
+      } else if (type === 'updateStatus') {
+        await onUpdatePhishingStatus?.(id.suspiciousId, id.nextStatus);
+      } else if (type === 'report-inline') {
+        await onReportLink?.(id);
+      } else {
+        await onDelete?.(type, id);
+      }
     } finally {
-      setDeleteConfirmOpen(false);
-      setItemToDelete(null);
+      setConfirmOpen(false);
+      setItemToConfirm(null);
     }
   };
+
+  // report dialog handlers
+  const openReportDialog = (prefillUrl = '') => {
+    setReportForm({ url: prefillUrl, pageTitle: '', reason: '' });
+    setReportOpen(true);
+  };
+  const closeReportDialog = () => setReportOpen(false);
+  const handleReportChange = (field: string, value: string) => setReportForm(prev => ({ ...prev, [field]: value }));
+  const submitReport = async () => {
+    if (!reportForm.url?.trim()) return;
+    setReportLoading(true);
+    try {
+      await onReportLink?.({ url: reportForm.url.trim(), pageTitle: reportForm.pageTitle?.trim(), reason: reportForm.reason?.trim() });
+      setReportOpen(false);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  // UI helper: compact URL link with tooltip
+  const UrlCell: React.FC<{ url: string }> = ({ url }) => (
+    <Typography component="a" href={url} target="_blank" rel="noreferrer" sx={{
+      color: 'primary.main', textDecoration: 'none', maxWidth: 520, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+    }} title={url}>
+      {url}
+    </Typography>
+  );
+
+  const renderSuspiciousRecentTable = () => (
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">Recent Reports</Typography>
+        <Box>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => openReportDialog('')}>
+            Report Link
+          </Button>
+        </Box>
+      </Box>
+
+      {loadingSuspiciousRecent ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+      ) : (
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>URL</TableCell>
+              <TableCell>Page Title</TableCell>
+              <TableCell>Detected At</TableCell>
+              <TableCell>Check Result</TableCell>
+              <TableCell>Confidence</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {suspiciousRecent.length === 0 ? (
+              <TableRow><TableCell colSpan={6} align="center">Không có report mới</TableCell></TableRow>
+            ) : suspiciousRecent.map((r: any) => (
+              <TableRow key={r.linkId}>
+                <TableCell><UrlCell url={r.url} /></TableCell>
+                <TableCell sx={{ maxWidth: 300, wordBreak: 'break-word' }}>{r.pageTitle || '-'}</TableCell>
+                <TableCell>{r.detectedAt ? new Date(r.detectedAt).toLocaleString() : '-'}</TableCell>
+                <TableCell>{r.checkResult || '-'}</TableCell>
+                <TableCell>
+                  <Chip label={r.confidenceScore != null ? `${r.confidenceScore}%` : '-'} size="small" color={getRiskLevelColor(String(r.checkResult || ''))} />
+                </TableCell>
+                <TableCell>
+                  <Tooltip title="Mark as Phishing">
+                    <IconButton size="small" color="error" onClick={() => openConfirm('promote', r.url, r.url)}>
+                      <BlockIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </>
+  );
+
+  const renderSuspiciousPhishingTable = () => (
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">Phishing (Verified)</Typography>
+      </Box>
+
+      {loadingSuspiciousPhishing ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+      ) : (
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>URL</TableCell>
+              <TableCell>Page Title</TableCell>
+              <TableCell>Detected At</TableCell>
+              <TableCell>Action Taken</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {suspiciousPhishing.length === 0 ? (
+              <TableRow><TableCell colSpan={6} align="center">Không có phishing record</TableCell></TableRow>
+            ) : suspiciousPhishing.map((p: any) => (
+              <TableRow key={p.suspiciousId}>
+                <TableCell><UrlCell url={p.url} /></TableCell>
+                <TableCell sx={{ maxWidth: 300, wordBreak: 'break-word' }}>{p.pageTitle || '-'}</TableCell>
+                <TableCell>{p.detectedAt ? new Date(p.detectedAt).toLocaleString() : '-'}</TableCell>
+                <TableCell>{p.actionTaken || '-'}</TableCell>
+                <TableCell>
+                  <Chip label={p.status || '-'} size="small" color={(p.status || '').toLowerCase() === 'active' ? 'success' : 'error'} />
+                </TableCell>
+                <TableCell>
+                  <Tooltip title={p.status === 'Active' ? 'Set Inactive' : 'Set Active'}>
+                    <IconButton
+                      size="small"
+                      onClick={() => openConfirm('updateStatus', { suspiciousId: p.suspiciousId, nextStatus: p.status === 'Active' ? 'Inactive' : 'Active' }, p.url)}
+                    >
+                      <CheckCircleIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Edit">
+                    <IconButton size="small" onClick={() => onOpenDialog('edit', p)}>
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </>
+  );
+
+  const renderSuspiciousSection = () => (
+    <>
+      <Tabs value={suspiciousSubTab} onChange={(_, v) => setSuspiciousSubTab(v)} sx={{ mb: 2 }}>
+        <Tab label="Recent" />
+        <Tab label="Phishing" />
+      </Tabs>
+      {suspiciousSubTab === 0 ? renderSuspiciousRecentTable() : renderSuspiciousPhishingTable()}
+    </>
+  );
+
+  const renderSuspiciousLinksTab = () => (
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" sx={{ fontWeight: 600 }}>Suspicious Links Management</Typography>
+      </Box>
+      {renderSuspiciousSection()}
+    </>
+  );
 
   const renderFeaturesTab = () => (
     <>
@@ -104,7 +316,7 @@ const AdminContent: React.FC<AdminContentProps> = ({
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => openDeleteConfirm('feature', feature.featureId, feature.name)}>
+                    <IconButton size="small" color="error" onClick={() => openConfirm('feature', feature.featureId, feature.name)}>
                       <DeleteIcon />
                     </IconButton>
                   </Tooltip>
@@ -112,6 +324,41 @@ const AdminContent: React.FC<AdminContentProps> = ({
               </TableRow>
             ))
           )}
+        </TableBody>
+      </Table>
+    </>
+  );
+
+  const renderTrustedLinksTab = () => (
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" sx={{ fontWeight: 600 }}>Trusted Links</Typography>
+      </Box>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>URL</TableCell>
+            <TableCell>Added By</TableCell>
+            <TableCell>Category</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {!trustedLinks || trustedLinks.length === 0 ? (
+            <TableRow><TableCell colSpan={5} align="center">Không có trusted links</TableCell></TableRow>
+          ) : trustedLinks.map((t: any) => (
+            <TableRow key={t.id}>
+              <TableCell><UrlCell url={t.url} /></TableCell>
+              <TableCell>{t.addedBy}</TableCell>
+              <TableCell><Chip label={t.category} size="small" color="info" /></TableCell>
+              <TableCell><Chip label={t.status} size="small" color={t.status?.toLowerCase() === 'active' ? 'success' : 'error'} /></TableCell>
+              <TableCell>
+                <Tooltip title="Edit"><IconButton size="small" onClick={() => onOpenDialog('edit', t)}><EditIcon /></IconButton></Tooltip>
+                <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => openConfirm('trustedLink', t.id, t.url)}><DeleteIcon /></IconButton></Tooltip>
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </>
@@ -128,14 +375,14 @@ const AdminContent: React.FC<AdminContentProps> = ({
       <Table>
         <TableHead>
           <TableRow sx={{ bgcolor: '#f8fafc' }}>
-            <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>User ID</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Plan</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Start Date</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>End Date</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Amount</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
+            <TableCell>ID</TableCell>
+            <TableCell>User ID</TableCell>
+            <TableCell>Plan</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Start Date</TableCell>
+            <TableCell>End Date</TableCell>
+            <TableCell>Amount</TableCell>
+            <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -159,136 +406,36 @@ const AdminContent: React.FC<AdminContentProps> = ({
     </>
   );
 
-  const renderSuspiciousLinksTab = () => (
+  const renderTenantsTab = () => (
     <>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600 }}>Suspicious Links Management</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => onOpenDialog('add')} sx={{ bgcolor: '#d32f2f' }}>
-          Report Link
-        </Button>
-      </Box>
-      <Table>
-        <TableHead>
-          <TableRow sx={{ bgcolor: '#f8fafc' }}>
-            <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>URL</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Reported By</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Risk Level</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Report Date</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {suspiciousLinks.map((link) => (
-            <TableRow key={link.id} hover>
-              <TableCell>{link.id}</TableCell>
-              <TableCell sx={{ maxWidth: 200, wordBreak: 'break-all' }}>{link.url}</TableCell>
-              <TableCell>{link.reportedBy}</TableCell>
-              <TableCell><Chip label={link.riskLevel} size="small" color={getRiskLevelColor(link.riskLevel)} /></TableCell>
-              <TableCell><Chip label={link.status} size="small" color={getStatusColor(link.status)} /></TableCell>
-              <TableCell>{link.reportDate}</TableCell>
-              <TableCell>
-                <Tooltip title="Review"><IconButton size="small" onClick={() => onOpenDialog('view', link)}><ViewIcon /></IconButton></Tooltip>
-                <Tooltip title="Block"><IconButton size="small" color="error"><BlockIcon /></IconButton></Tooltip>
-                <Tooltip title="Approve"><IconButton size="small" color="success"><CheckCircleIcon /></IconButton></Tooltip>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </>
-  );
-
-  const renderTrustedLinksTab = () => (
-    <>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600 }}>Trusted Links Management</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => onOpenDialog('add')} sx={{ bgcolor: '#388e3c' }}>
-          Add Trusted Link
-        </Button>
+        <Typography variant="h5" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}><PeopleIcon sx={{ mr: 1 }} /> Tenants</Typography>
+        <Button variant="contained" startIcon={<AddIcon />}>Add Tenant</Button>
       </Box>
       <Table>
         <TableHead>
           <TableRow>
             <TableCell>ID</TableCell>
-            <TableCell>URL / Domain</TableCell>
-            <TableCell>Added By</TableCell>
-            <TableCell>Category</TableCell>
+            <TableCell>Name</TableCell>
+            <TableCell>Domain</TableCell>
             <TableCell>Status</TableCell>
+            <TableCell>Users</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {trustedLinks.map((link: any) => (
-            <TableRow key={link.id} hover>
-              <TableCell>{link.id}</TableCell>
-              <TableCell sx={{ maxWidth: 200, wordBreak: 'break-all' }}>{link.url}</TableCell>
-              <TableCell>{link.addedBy}</TableCell>
-              <TableCell><Chip label={link.category} size="small" color="info" /></TableCell>
+          {!tenants || tenants.length === 0 ? (
+            <TableRow><TableCell colSpan={6} align="center">Không có tenant</TableCell></TableRow>
+          ) : tenants.map((ten: any) => (
+            <TableRow key={ten.id}>
+              <TableCell>{ten.id}</TableCell>
+              <TableCell>{ten.name}</TableCell>
+              <TableCell>{ten.domain}</TableCell>
+              <TableCell><Chip label={ten.status} size="small" color={getStatusColor(ten.status)} /></TableCell>
+              <TableCell>{ten.users}</TableCell>
               <TableCell>
-                <Chip label={link.status} size="small" color={getStatusColor(link.status)} />
-              </TableCell>
-              <TableCell>
-                <Tooltip title="Edit">
-                  <IconButton size="small" onClick={() => onOpenDialog('edit', link)}>
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => openDeleteConfirm('trustedLink', link.id, link.url)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </>
-  );
-
-  const renderTenantsTab = () => (
-    <>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600 }}>Tenant Management</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => onOpenDialog('add')} sx={{ bgcolor: '#1976d2' }}>
-          Add Tenant
-        </Button>
-      </Box>
-      <Table>
-        <TableHead>
-          <TableRow sx={{ bgcolor: '#f8fafc' }}>
-            <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Tenant Name</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Domain</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Users</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Created Date</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {tenants.map((tenant) => (
-            <TableRow key={tenant.id} hover>
-              <TableCell>{tenant.id}</TableCell>
-              <TableCell>{tenant.name}</TableCell>
-              <TableCell>{tenant.domain}</TableCell>
-              <TableCell><Chip label={tenant.status} size="small" color={getStatusColor(tenant.status)} /></TableCell>
-              <TableCell>
-                <Badge badgeContent={tenant.users} color="primary">
-                  <PeopleIcon />
-                </Badge>
-              </TableCell>
-              <TableCell>{tenant.createdDate}</TableCell>
-              <TableCell>
-                <Tooltip title="View"><IconButton size="small" onClick={() => onOpenDialog('view', tenant)}><ViewIcon /></IconButton></Tooltip>
-                <Tooltip title="Edit"><IconButton size="small" onClick={() => onOpenDialog('edit', tenant)}><EditIcon /></IconButton></Tooltip>
-                <Tooltip title="Delete"><IconButton size="small" color="error"><DeleteIcon /></IconButton></Tooltip>
+                <Tooltip title="Edit"><IconButton size="small" onClick={() => onOpenDialog('edit', ten)}><EditIcon /></IconButton></Tooltip>
+                <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => openConfirm('tenant', ten.id, ten.name)}><DeleteIcon /></IconButton></Tooltip>
               </TableCell>
             </TableRow>
           ))}
@@ -311,25 +458,33 @@ const AdminContent: React.FC<AdminContentProps> = ({
   return (
     <Box>
       {renderTabContent()}
-      
-      {/* Delete confirmation dialog */}
-      <Dialog
-        open={deleteConfirmOpen}
-        onClose={cancelDelete}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Xác nhận xóa</DialogTitle>
+
+      {/* Action confirmation dialog */}
+      <Dialog open={confirmOpen} onClose={cancelConfirm} maxWidth="xs" fullWidth>
+        <DialogTitle>Xác nhận</DialogTitle>
         <DialogContent>
           <Typography>
-            Bạn có chắc muốn xóa{' '}
-            <strong>{itemToDelete?.name ?? itemToDelete?.id}</strong> không? Hành động này không thể hoàn tác.
+            Bạn có chắc muốn thực hiện hành động trên <strong>{itemToConfirm?.name ?? itemToConfirm?.id}</strong> không?
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={cancelDelete}>Hủy</Button>
-          <Button variant="contained" color="error" onClick={confirmDelete}>
-            Xóa
+          <Button onClick={cancelConfirm}>Hủy</Button>
+          <Button variant="contained" color="error" onClick={confirmAction}>Xác nhận</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Report dialog */}
+      <Dialog open={reportOpen} onClose={closeReportDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Report Suspicious Link</DialogTitle>
+        <DialogContent>
+          <TextField fullWidth label="URL" sx={{ mb: 2, mt: 1 }} value={reportForm.url} onChange={(e) => handleReportChange('url', e.target.value)} />
+          <TextField fullWidth label="Page Title" sx={{ mb: 2 }} value={reportForm.pageTitle} onChange={(e) => handleReportChange('pageTitle', e.target.value)} />
+          <TextField fullWidth label="Reason" multiline rows={3} value={reportForm.reason} onChange={(e) => handleReportChange('reason', e.target.value)} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeReportDialog}>Cancel</Button>
+          <Button variant="contained" onClick={submitReport} disabled={reportLoading}>
+            {reportLoading ? 'Sending...' : 'Send Report'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -338,14 +493,3 @@ const AdminContent: React.FC<AdminContentProps> = ({
 };
 
 export default AdminContent;
-
-// Helper: màu cho risk level nếu bạn hiển thị risk somewhere
-const getRiskLevelColor = (level?: string): 'default' | 'error' | 'warning' | 'info' | 'success' => {
-  if (!level) return 'default';
-  const l = String(level).toLowerCase();
-  if (l === 'critical') return 'error';
-  if (l === 'high') return 'warning';
-  if (l === 'medium') return 'info';
-  if (l === 'low') return 'success';
-  return 'default';
-};
