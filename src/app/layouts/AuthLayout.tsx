@@ -20,14 +20,22 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ mode, children }) => {
           'radial-gradient(80% 60% at 20% 40%, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0) 60%), radial-gradient(70% 50% at 90% 10%, rgba(255,200,0,0.1) 0%, rgba(0,0,0,0) 50%), #0b0b0b',
         color: '#fff',
         display: 'flex',
+        flexDirection: 'column', // ✅ THÊM DÒNG NÀY
         alignItems: 'center',
+        justifyContent: 'center', // ✅ ĐỔI THÀNH CENTER
         pt: 0,
       }}
     >
       <Header />
       <Toolbar />
-      <Container maxWidth="lg">
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', gap: { xs: 4, md: 8 } }}>
+      <Container maxWidth="lg" sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', md: 'row' }, 
+          alignItems: 'center', 
+          gap: { xs: 4, md: 8 },
+          width: '100%'
+        }}>
           <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             {isRegister ? (
               <img

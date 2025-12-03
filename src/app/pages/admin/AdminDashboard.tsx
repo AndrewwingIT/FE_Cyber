@@ -1,28 +1,15 @@
-import React, { useState } from 'react';
-import { Box, Container, Typography } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Container, Typography, CircularProgress } from '@mui/material';
+import { toast } from 'react-toastify';
 import AdminLayout from '../../layouts/AdminLayout';
 import DashboardStats from '../../../components/Admin/DashboardStats';
 import AdminTabs, { TabPanel } from '../../../components/Admin/AdminTabs';
 import AdminContent from '../../../components/Admin/AdminContent';
 import AdminDialog from '../../../components/Admin/AdminDialog';
 import AdminPaymentManagement from '../../../components/Admin/AdminPaymentManagement';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-  createdAt: string;
-}
-
-interface Feature {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  type: string;
-}
+import FeatureService from '../../../app/services/FeatureService';
+import type { Feature } from '../../../app/services/FeatureService';
+import TrustedLinkService from '../../../app/services/TrustedLinkService';
 
 interface Subscription {
   id: number;
@@ -65,20 +52,11 @@ const AdminDashboard: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogType, setDialogType] = useState<'add' | 'edit' | 'view'>('add');
-  const [selectedItem, setSelectedItem] = useState<User | Feature | Subscription | SuspiciousLink | TrustedLink | Tenant | null>(null);
-
-  // Mock data - Replace with actual API calls
-  const [users] = useState<User[]>([
-    { id: 1, name: 'John Doe', email: 'john@example.com', role: 'User', status: 'Active', createdAt: '2024-01-15' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'Admin', status: 'Active', createdAt: '2024-01-20' },
-    { id: 3, name: 'Bob Johnson', email: 'bob@example.com', role: 'User', status: 'Inactive', createdAt: '2024-02-01' }
-  ]);
-
-  const [features] = useState<Feature[]>([
-    { id: 1, name: 'Anti-Phishing', description: 'Phát hiện và chặn trang web lừa đảo', status: 'Active', type: 'Security' },
-    { id: 2, name: 'Link Scanner', description: 'Quét và phân tích độ an toàn của liên kết', status: 'Active', type: 'Scanner' },
-    { id: 3, name: 'Real-time Protection', description: 'Bảo vệ thời gian thực', status: 'Development', type: 'Security' }
-  ]);
+  const [selectedItem, setSelectedItem] = useState<Feature | Subscription | SuspiciousLink | TrustedLink | Tenant | null>(null);
+  
+  // Features from API
+  const [features, setFeatures] = useState<Feature[]>([]);
+  const [loadingFeatures, setLoadingFeatures] = useState(false);
 
   const [subscriptions] = useState<Subscription[]>([
     { id: 1, userId: 1, plan: 'BASIC', status: 'Active', startDate: '2024-01-15', endDate: '2024-02-15', amount: '$28' },
@@ -92,11 +70,8 @@ const AdminDashboard: React.FC = () => {
     { id: 3, url: 'https://suspicious-link.org', reportedBy: 'System', riskLevel: 'Medium', status: 'Approved', reportDate: '2024-03-03' }
   ]);
 
-  const [trustedLinks] = useState<TrustedLink[]>([
-    { id: 1, url: 'https://google.com', addedBy: 'Admin', category: 'Search Engine', status: 'Active', addedDate: '2024-01-01' },
-    { id: 2, url: 'https://github.com', addedBy: 'Admin', category: 'Development', status: 'Active', addedDate: '2024-01-02' },
-    { id: 3, url: 'https://stackoverflow.com', addedBy: 'Admin', category: 'Development', status: 'Active', addedDate: '2024-01-03' }
-  ]);
+  const [trustedLinks, setTrustedLinks] = useState<TrustedLink[]>([]);
+  const [loadingTrustedLinks, setLoadingTrustedLinks] = useState(false);
 
   const [tenants] = useState<Tenant[]>([
     { id: 1, name: 'Cyber Rampart Main', domain: 'cyberrampart.com', status: 'Active', users: 150, createdDate: '2024-01-01' },
@@ -104,11 +79,107 @@ const AdminDashboard: React.FC = () => {
     { id: 3, name: 'Demo Environment', domain: 'demo.cyberrampart.com', status: 'Inactive', users: 10, createdDate: '2024-02-01' }
   ]);
 
+  // Load features from API
+  useEffect(() => {
+    loadFeatures();
+    loadTrustedLinks();
+  }, []);
+
+  const loadTrustedLinks = async () => {
+    setLoadingTrustedLinks(true);
+    try {
+      const res = await TrustedLinkService.getAllTrustedLinks();
+      if (res.success && res.data) {
+        const links = Array.isArray(res.data) ? res.data : [res.data];
+        // map backend shape to local TrustedLink interface used by admin (id vs linkId)
+        const normalized = links.map((l: any) => ({
+          id: l.linkId ?? l.id ?? 0,
+          url: l.url,
+          addedBy: l.source ?? 'API',
+          category: l.category,
+          status: l.status,
+          addedDate: (l.addedDate as string) || ''
+        }));
+        setTrustedLinks(normalized);
+      } else {
+        toast.error(res.message || 'Không lấy được danh sách trusted links');
+        setTrustedLinks([]);
+      }
+    } catch (err) {
+      console.error('Load trusted links error', err);
+      toast.error('Lỗi khi tải trusted links');
+      setTrustedLinks([]);
+    } finally {
+      setLoadingTrustedLinks(false);
+    }
+  };
+
+  const loadFeatures = async () => {
+    setLoadingFeatures(true);
+    try {
+      const response = await FeatureService.getAllFeatures();
+      if (response.success && response.data) {
+        const featuresData = Array.isArray(response.data) ? response.data : [response.data];
+        setFeatures(featuresData);
+      } else {
+        toast.error(response.message || 'Không lấy được danh sách features');
+        setFeatures([]);
+      }
+    } catch (error) {
+      toast.error('Lỗi khi tải danh sách features');
+      setFeatures([]);
+    } finally {
+      setLoadingFeatures(false);
+    }
+  };
+
+  const handleDeleteFeature = async (id: number) => {
+    try {
+      const response = await FeatureService.deleteFeature(id);
+      if (response.success) {
+        toast.success(response.message || 'Xóa feature thành công');
+        loadFeatures(); // Reload danh sách
+      } else {
+        toast.error(response.message || 'Xóa feature thất bại');
+      }
+    } catch (error) {
+      toast.error('Lỗi khi xóa feature');
+    }
+  };
+
+  const handleDelete = (type: string, id: number) => {
+    if (type === 'feature') {
+      handleDeleteFeature(id);
+      return;
+    }
+
+    if (type === 'trustedLink') {
+      handleDeleteTrustedLink(id);
+      return;
+    }
+    // Các type khác sẽ được implement sau
+  };
+
+  const handleDeleteTrustedLink = async (linkId: number) => {
+    try {
+      const res = await TrustedLinkService.deleteTrustedLink(linkId);
+      if (res.success) {
+        toast.success(res.message || 'Xóa trusted link thành công');
+        await loadTrustedLinks();
+      } else {
+        toast.error(res.message || 'Xóa trusted link thất bại');
+      }
+    } catch (err) {
+      console.error('Delete trusted link error', err);
+      toast.error('Lỗi khi xóa trusted link');
+    }
+  };
+
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
   };
 
-  const handleOpenDialog = (type: 'add' | 'edit' | 'view', item?: User | Feature | Subscription | SuspiciousLink | TrustedLink | Tenant) => {
+  const handleOpenDialog = (type: 'add' | 'edit' | 'view', item?: Feature | Subscription | SuspiciousLink | TrustedLink | Tenant) => {
     setDialogType(type);
     setSelectedItem(item || null);
     setOpenDialog(true);
@@ -117,6 +188,10 @@ const AdminDashboard: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedItem(null);
+    // Reload features after dialog closes (in case of add/edit)
+    if (currentTab === 0) {
+      loadFeatures();
+    }
   };
 
   return (
@@ -140,7 +215,6 @@ const AdminDashboard: React.FC = () => {
 
           {/* Dashboard Stats */}
           <DashboardStats 
-            totalUsers={users.length}
             activeSubscriptions={subscriptions.filter(s => s.status === 'Active').length}
             suspiciousLinks={suspiciousLinks.filter(l => l.status === 'Under Review').length}
             trustedLinks={trustedLinks.length}
@@ -149,78 +223,72 @@ const AdminDashboard: React.FC = () => {
           {/* Main Content */}
           <AdminTabs currentTab={currentTab} onTabChange={handleTabChange}>
             <TabPanel value={currentTab} index={0}>
-              <AdminContent
-                currentTab={0}
-                onOpenDialog={handleOpenDialog}
-                users={users}
-                features={features}
-                subscriptions={subscriptions}
-                suspiciousLinks={suspiciousLinks}
-                trustedLinks={trustedLinks}
-                tenants={tenants}
-              />
+              {loadingFeatures ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <AdminContent
+                  currentTab={0}
+                  onOpenDialog={handleOpenDialog}
+                  features={features}
+                  subscriptions={subscriptions}
+                  suspiciousLinks={suspiciousLinks}
+                  trustedLinks={trustedLinks}
+                  tenants={tenants}
+                  onDelete={handleDelete}
+                />
+              )}
             </TabPanel>
             <TabPanel value={currentTab} index={1}>
               <AdminContent
                 currentTab={1}
                 onOpenDialog={handleOpenDialog}
-                users={users}
                 features={features}
                 subscriptions={subscriptions}
                 suspiciousLinks={suspiciousLinks}
                 trustedLinks={trustedLinks}
                 tenants={tenants}
+                onDelete={handleDelete}
               />
             </TabPanel>
             <TabPanel value={currentTab} index={2}>
               <AdminContent
                 currentTab={2}
                 onOpenDialog={handleOpenDialog}
-                users={users}
                 features={features}
                 subscriptions={subscriptions}
                 suspiciousLinks={suspiciousLinks}
                 trustedLinks={trustedLinks}
                 tenants={tenants}
+                onDelete={handleDelete}
               />
             </TabPanel>
             <TabPanel value={currentTab} index={3}>
               <AdminContent
                 currentTab={3}
                 onOpenDialog={handleOpenDialog}
-                users={users}
                 features={features}
                 subscriptions={subscriptions}
                 suspiciousLinks={suspiciousLinks}
                 trustedLinks={trustedLinks}
                 tenants={tenants}
+                onDelete={handleDelete}
               />
             </TabPanel>
             <TabPanel value={currentTab} index={4}>
               <AdminContent
                 currentTab={4}
                 onOpenDialog={handleOpenDialog}
-                users={users}
                 features={features}
                 subscriptions={subscriptions}
                 suspiciousLinks={suspiciousLinks}
                 trustedLinks={trustedLinks}
                 tenants={tenants}
+                onDelete={handleDelete}
               />
             </TabPanel>
             <TabPanel value={currentTab} index={5}>
-              <AdminContent
-                currentTab={5}
-                onOpenDialog={handleOpenDialog}
-                users={users}
-                features={features}
-                subscriptions={subscriptions}
-                suspiciousLinks={suspiciousLinks}
-                trustedLinks={trustedLinks}
-                tenants={tenants}
-              />
-            </TabPanel>
-            <TabPanel value={currentTab} index={6}>
               <AdminPaymentManagement />
             </TabPanel>
           </AdminTabs>
@@ -231,6 +299,14 @@ const AdminDashboard: React.FC = () => {
             onClose={handleCloseDialog}
             dialogType={dialogType}
             selectedItem={selectedItem}
+            currentTab={currentTab}
+            onRefresh={() => {
+              // gọi loader phù hợp theo tab hiện tại
+              if (currentTab === 0) return loadFeatures();
+              if (currentTab === 3) return loadTrustedLinks();
+              // thêm các loader khác nếu có
+              return Promise.resolve();
+            }}
           />
         </Container>
       </Box>

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box, Paper, Tabs, Tab } from '@mui/material';
 import {
-  People as PeopleIcon,
   Security as SecurityIcon,
   Subscriptions as SubscribeIcon,
   Warning as WarningIcon,
@@ -58,11 +57,6 @@ const AdminTabs: React.FC<AdminTabsProps> = ({ currentTab, onTabChange, children
             }
           }}
         >
-          <Tab 
-            label="Users" 
-            icon={<PeopleIcon />}
-            iconPosition="start"
-          />
           <Tab 
             label="Features" 
             icon={<SecurityIcon />}

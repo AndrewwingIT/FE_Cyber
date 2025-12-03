@@ -39,39 +39,48 @@ const PaymentPage: React.FC = () => {
     }
   }, [navigate]);
 
-  const handleSelectPackage = async (pkg: Package) => {
-    if (pkg.id === 'free') {
-      // Nếu chọn free thì không cần thanh toán
-      setPaymentInfo({
-        packageName: pkg.name,
-        price: pkg.price,
-        status: 'completed',
-      });
-      toast.success('Đã sử dụng gói FREE!');
-      navigate('/');
-      return;
+  const resolveSubscriptionId = (pkg: Package, index?: number): number | null => {
+    if (pkg.subscriptionId !== undefined && pkg.subscriptionId !== null) {
+      const n = Number(pkg.subscriptionId);
+      return Number.isFinite(n) && n >= 0 ? n : null;
     }
+    // fallback: nếu không có, dùng index -> +1 (hoặc map theo tên)
+    if (typeof index === 'number') return index + 1;
+    return null;
+  };
 
-    setSelectedPackage(pkg);
-    setOpenDialog(true);
+  const handleSelectPackage = async (pkg: Package, index?: number) => {
     setLoading(true);
-
     try {
-      // Tạo đơn thanh toán
-      const response = await PaymentService.createPayment(pkg.id, pkg.name, pkg.price);
-      if (response.success && response.data) {
-        setOrderId(response.data.orderId || `ORDER_${Date.now()}`);
-        
-        // Generate QR code
-        const qr = await PaymentService.generateQRCode(response.data.orderId || `ORDER_${Date.now()}`, pkg.price);
-        setQrCode(qr);
-      } else {
-        toast.error(response.message);
-        setOpenDialog(false);
+      const subscriptionId = resolveSubscriptionId(pkg, index);
+      if (!subscriptionId) {
+        toast.error('Gói chọn không hợp lệ (thiếu id).');
+        setLoading(false);
+        return;
       }
-    } catch {
+
+      const response = await PaymentService.createPayment(
+        subscriptionId,
+        Number(pkg.price),
+        'bank_transfer'
+      );
+
+      if (response && response.success) {
+        const generatedOrderId = response.data?.transactionId || `ORDER_${Date.now()}`;
+        setOrderId(generatedOrderId);
+        setSelectedPackage(pkg);
+
+        // Thay vì dùng đường dẫn theo order, luôn dùng ảnh QR tĩnh trong public
+        // Đặt file QR tĩnh vào public/images/qr.png
+        const staticQrPath = '/images/qr.png';
+        setQrCode(staticQrPath);
+        setOpenDialog(true);
+      } else {
+        toast.error(response?.message || 'Tạo đơn thất bại');
+      }
+    } catch (error) {
+      console.error('Error creating payment:', error);
       toast.error('Lỗi khi tạo đơn thanh toán');
-      setOpenDialog(false);
     } finally {
       setLoading(false);
     }
@@ -332,8 +341,16 @@ const PaymentPage: React.FC = () => {
                   </Typography>
                   <Box
                     component="img"
-                    src={qrCode}
+                    src={'/images/qrcode.png'} // luôn lấy ảnh từ public
                     alt="QR Code"
+                    onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                      // bảo đảm fallback nếu không load được
+                      const img = e.currentTarget;
+                      if (!img.dataset.fallback) {
+                        img.dataset.fallback = '1';
+                        img.src = '/images/qr.png';
+                      }
+                    }}
                     sx={{
                       width: '100%',
                       maxWidth: '300px',

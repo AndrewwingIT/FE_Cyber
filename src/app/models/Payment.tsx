@@ -1,41 +1,39 @@
 export interface Package {
   id: string;
   name: string;
-  price: string;
-  priceInCents: number;
+  price: number;
   duration: string;
   features: string[];
   highlighted?: boolean;
+  subscriptionId?: number; // <-- thêm trường này
 }
 
 export interface Payment {
-  id: string;
-  userId: string;
-  userEmail: string;
-  packageId: string;
-  packageName: string;
-  amount: string;
-  status: 'pending' | 'completed' | 'failed' | 'cancelled';
-  orderId: string;
-  createdAt: string;
-  updatedAt?: string;
-  qrCode?: string;
-  notes?: string;
+  subscriptionId: number;
+  amount: number;
+  paymentMethod: string;
+  status: string;
+  transactionId: string; // ✅ Thêm dòng này
+  createdAt?: string;
+  orderId?: string;
+  userId?: string;
+  userEmail?: string;
+  packageName?: string;
 }
 
 export interface PaymentResponse {
   success: boolean;
   message: string;
   data?: Payment;
-  error?: string;
+  error?: any;
 }
 
 export const PACKAGES: Package[] = [
   {
     id: 'free',
     name: 'FREE',
-    price: 'FREE',
-    priceInCents: 0,
+    subscriptionId: 0,
+    price: 0,
     duration: 'Lifetime',
     features: [
       'Quyền truy cập vào các khóa học dành cho người mới bắt đầu.',
@@ -46,8 +44,8 @@ export const PACKAGES: Package[] = [
   {
     id: 'basic',
     name: 'BASIC',
-    price: '$28/Tháng',
-    priceInCents: 2800,
+    subscriptionId: 1,
+    price: 2800,
     duration: 'Hàng tháng',
     features: [
       'Quyền truy cập vào các khóa học dành cho người mới bắt đầu.',
@@ -59,8 +57,8 @@ export const PACKAGES: Package[] = [
   {
     id: 'plus',
     name: 'PLUS',
-    price: '$35/Tháng',
-    priceInCents: 3500,
+    subscriptionId: 2,
+    price: 3500,
     duration: 'Hàng tháng',
     highlighted: true,
     features: [
@@ -74,8 +72,8 @@ export const PACKAGES: Package[] = [
   {
     id: 'premium',
     name: 'PREMIUM',
-    price: '$49/Tháng',
-    priceInCents: 4900,
+    subscriptionId: 3,
+    price: 4900,
     duration: 'Hàng tháng',
     features: [
       'Tất cả những gì có trong gói Plus.',

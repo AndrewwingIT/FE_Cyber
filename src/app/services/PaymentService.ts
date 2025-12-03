@@ -2,103 +2,130 @@ import axiosInstance from '../../config/axiosConfig';
 import type { PaymentResponse } from '../models/Payment';
 
 export class PaymentService {
+  // Tạo đơn thanh toán manual (không qua VNPay)
   static async createPayment(
-    packageId: string,
-    packageName: string,
-    amount: string
+    subscriptionId: number,
+    amount: number,
+    paymentMethod: string = 'bank_transfer'
   ): Promise<PaymentResponse> {
+    console.log('createPayment payload', { subscriptionId, amount, paymentMethod });
+    if (Number.isNaN(subscriptionId) || subscriptionId <= 0) {
+      return { success: false, message: 'Invalid subscriptionId', error: 'subscriptionId must be a positive number' };
+    }
+
     try {
-      const userEmail = sessionStorage.getItem('userEmail');
-      const response = await axiosInstance.post('/api/Payment/create', {
-        packageId,
-        packageName,
-        amount,
-        userEmail,
+      const transactionId = `TXN_${Date.now()}`;
+      const res = await axiosInstance.post('/api/Payment/manual', {
+        subscriptionId: Number(subscriptionId),
+        amount: Number(amount),
+        paymentMethod,
+        status: 'pending',
+        transactionId,
       });
-      return response.data;
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error.message : 'Unknown error';
+
+      // Treat any 2xx as success (including 201 Created)
+      if (res.status >= 200 && res.status < 300) {
+        return {
+          success: true,
+          message: res.data?.message || 'Created',
+          data: res.data,
+        };
+      }
+
       return {
         success: false,
-        message: 'Tạo đơn thanh toán thất bại',
-        error: err,
+        message: res.data?.message || `Unexpected status ${res.status}`,
+        error: res.data,
+      };
+    } catch (error: any) {
+      console.error('Payment error:', error?.response?.data ?? error);
+      return {
+        success: false,
+        message: error?.response?.data?.message || 'Tạo đơn thất bại',
+        error: error?.response?.data ?? error.message,
       };
     }
   }
 
-  static async getPaymentStatus(orderId: string): Promise<PaymentResponse> {
+  // Lấy trạng thái thanh toán
+  static async getPaymentStatus(txnId: string): Promise<PaymentResponse> {
     try {
-      const response = await axiosInstance.get(`/api/Payment/status/${orderId}`);
+      const response = await axiosInstance.get(`/api/Payment/${txnId}`);
       return response.data;
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error.message : 'Unknown error';
+    } catch (error: any) {
+      console.error('Get payment status error:', error.response?.status, error.response?.data);
       return {
         success: false,
-        message: 'Lấy trạng thái thanh toán thất bại',
-        error: err,
+        message: 'Không lấy được trạng thái thanh toán',
+        error: error.message,
       };
     }
   }
 
-  static async getPaymentByUserEmail(userEmail: string): Promise<PaymentResponse> {
-    try {
-      const response = await axiosInstance.get(`/api/Payment/user/${userEmail}`);
-      return response.data;
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        success: false,
-        message: 'Lấy thông tin thanh toán thất bại',
-        error: err,
-      };
-    }
-  }
-
-  static async getAllPayments(): Promise<PaymentResponse> {
-    try {
-      const response = await axiosInstance.get('/api/Payment/all');
-      return response.data;
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        success: false,
-        message: 'Lấy danh sách thanh toán thất bại',
-        error: err,
-      };
-    }
-  }
-
+  // Cập nhật trạng thái thanh toán (chỉ dùng trong admin)
   static async updatePaymentStatus(
-    orderId: string,
-    status: 'completed' | 'failed' | 'cancelled',
+    paymentId: string,
+    status: 'completed' | 'failed' | 'cancelled' | 'pending',
     notes?: string
   ): Promise<PaymentResponse> {
     try {
-      const response = await axiosInstance.put(`/api/Payment/status/${orderId}`, {
+      const response = await axiosInstance.put(`/api/Payment/${paymentId}/status`, {
         status,
         notes,
       });
       return response.data;
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error.message : 'Unknown error';
+    } catch (error: any) {
+      console.error('Update payment status error:', error.response?.status, error.response?.data);
       return {
         success: false,
-        message: 'Cập nhật trạng thái thanh toán thất bại',
-        error: err,
+        message: error.response?.data?.message || 'Cập nhật trạng thái thanh toán thất bại',
+        error: error.response?.data?.error || error.message,
       };
     }
   }
 
+  // Generate QR (VNPay)
   static async generateQRCode(orderId: string, amount: string): Promise<string> {
     try {
-      const response = await axiosInstance.post('/api/Payment/generate-qr', {
+      const response = await axiosInstance.post('/api/Payment/vnpay', {
         orderId,
         amount,
       });
-      return response.data.qrCode;
+      const qr = response.data?.qrCode;
+      if (qr) return qr;
+      return `/images/qr/${orderId}.png`;
     } catch {
-      // Fallback: generate QR code locally (placeholder)
-      return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='white'/%3E%3Ctext x='50' y='100' font-size='12'%3EQR: ${orderId}%3C/text%3E%3C/svg%3E`;
+      return `/images/qr/${orderId}.png`;
+    }
+  }
+
+  // Callback từ VNPay
+  static async handleVNPayCallback(data: any): Promise<PaymentResponse> {
+    try {
+      const response = await axiosInstance.post('/api/Payment/callback', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('VNPay callback error:', error.response?.data);
+      return {
+        success: false,
+        message: 'Xử lý callback thất bại',
+        error: error.message,
+      };
+    }
+  }
+
+  // Lấy danh sách thanh toán (admin)
+  static async getAllPayments(): Promise<PaymentResponse> {
+    try {
+      const response = await axiosInstance.get('/api/Payment');
+      return response.data;
+    } catch (error: any) {
+      console.error('Get all payments error:', error.response?.data);
+      return {
+        success: false,
+        message: 'Không lấy được danh sách thanh toán',
+        error: error.message,
+      };
     }
   }
 }

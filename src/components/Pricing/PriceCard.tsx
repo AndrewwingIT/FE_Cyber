@@ -1,3 +1,4 @@
+import React from "react";
 import { Box, Typography, Button, Stack } from "@mui/material";
 
 interface PriceCardProps {

@@ -3,7 +3,7 @@ import React, { createContext, useState, useCallback } from 'react';
 export interface PaymentInfo {
   userId?: number;
   packageName: string;
-  price: string;
+  price: number;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
   orderId?: string;
   createdAt?: string;

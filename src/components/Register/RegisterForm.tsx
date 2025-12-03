@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import {
   Paper, Stack, TextField, Button, IconButton, InputAdornment, Divider, Typography, Box
 } from '@mui/material';
-import { Visibility, VisibilityOff, Google, Apple, Facebook } from '@mui/icons-material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../config/axiosConfig';
 import { toast } from 'react-toastify';
 
@@ -54,17 +54,16 @@ const handleRegister = async () => {
   setLoading(true);
   try {
     await axiosInstance.post('/api/Auth/register', {
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.trim(),
-      password: password.trim(),
+      firstName,
+      lastName,
+      email,
+      password
     });
     toast.success("Đăng ký thành công!");
-    navigate("/login");
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || "Đăng ký thất bại!";
-    toast.error(errorMessage);
-    console.error("Error details:", error.response?.data);
+    // ✅ Dùng window.location.href để reload trang thay vì navigate
+    window.location.href = '/login';
+  } catch (error) {
+    toast.error("Đăng ký thất bại!");
   } finally {
     setLoading(false);
   }
@@ -190,7 +189,7 @@ const handleRegister = async () => {
               Hoặc tiếp tục với
             </Divider>
             <Stack direction="row" spacing={2} justifyContent="center">
-              <Button variant="outlined" startIcon={<Google />} sx={{
+              <Button variant="outlined" sx={{
                 color: '#fff',
                 borderColor: 'rgba(255,255,255,0.3)',
                 fontWeight: 700,
@@ -200,7 +199,7 @@ const handleRegister = async () => {
               }}>
                 GOOGLE
               </Button>
-              <Button variant="outlined" startIcon={<Apple />} sx={{
+              <Button variant="outlined" sx={{
                 color: '#fff',
                 borderColor: 'rgba(255,255,255,0.3)',
                 fontWeight: 700,
@@ -210,7 +209,7 @@ const handleRegister = async () => {
               }}>
                 APPLE
               </Button>
-              <Button variant="outlined" startIcon={<Facebook />} sx={{
+              <Button variant="outlined" sx={{
                 color: '#fff',
                 borderColor: 'rgba(255,255,255,0.3)',
                 fontWeight: 700,
@@ -222,7 +221,7 @@ const handleRegister = async () => {
               </Button>
             </Stack>
             <Typography variant="body2" sx={{ textAlign: 'center', color: 'rgba(255,255,255,0.75)', mt: 1 }}>
-              Đã có tài khoản? <Link to="/login" style={{ color: '#60a5fa', fontWeight: 600 }}>Đăng nhập</Link>
+              Đã có tài khoản? <RouterLink to="/login" style={{ color: '#60a5fa', fontWeight: 600 }}>Đăng nhập</RouterLink>
             </Typography>
           </Stack>
         </Paper>

@@ -6,14 +6,28 @@ import PricePage from '../pages/price/PricePage';
 import PaymentPage from '../pages/payment/PaymentPage';
 import LoginPage from '../pages/login/LoginPage';
 import AdminDashboard from '../pages/admin/AdminDashboard';
+import PrivateRoute from './PrivateRoute';
+import RootLayout from '../../components/Layout/RootLayout';
 
+// Lazy load components để tránh lỗi undefined
 const router = createBrowserRouter([
-  { path: '/', element: <App /> },
-  { path: '/login', element: <LoginPage /> },
-  { path: '/register', element: <RegisterPage /> },
-  { path: '/price', element: <PricePage /> },
-  { path: '/payment', element: <PaymentPage /> },
-  { path: '/admin', element: <AdminDashboard /> },
+  {
+    element: <RootLayout />,
+    children: [
+      { path: '/', element: <App /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+      { path: '/price', element: <PricePage /> },
+      {
+        path: '/admin',
+        element: <PrivateRoute requiredRole="Admin" />,
+        children: [
+          { index: true, element: <AdminDashboard /> },
+        ],
+      },
+      { path: '/payment', element: <PaymentPage /> },
+    ],
+  },
 ]);
 
 const MainRoute: React.FC = () => {

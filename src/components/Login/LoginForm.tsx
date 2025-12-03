@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import {
   Paper, Stack, TextField, Button, IconButton, InputAdornment, Divider, Typography
 } from '@mui/material';
-import { Visibility, VisibilityOff, Google, Apple, Facebook } from '@mui/icons-material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../config/axiosConfig';
 import { toast } from 'react-toastify';
 
@@ -60,7 +60,7 @@ const LoginForm: React.FC = () => {
       } else {
         toast.error("Không nhận được token!");
       }
-    } catch {
+    } catch (error) {
       toast.error("Đăng nhập thất bại!");
     } finally {
       setLoading(false);
@@ -175,7 +175,7 @@ const LoginForm: React.FC = () => {
           Hoặc tiếp tục với
         </Divider>
         <Stack direction="row" spacing={2} justifyContent="center">
-          <Button variant="outlined" startIcon={<Google />} sx={{
+          <Button variant="outlined" sx={{
             color: '#fff',
             borderColor: 'rgba(255,255,255,0.3)',
             fontWeight: 700,
@@ -186,7 +186,7 @@ const LoginForm: React.FC = () => {
           }}>
             GOOGLE
           </Button>
-          <Button variant="outlined" startIcon={<Apple />} sx={{
+          <Button variant="outlined" sx={{
             color: '#fff',
             borderColor: 'rgba(255,255,255,0.3)',
             fontWeight: 700,
@@ -197,7 +197,7 @@ const LoginForm: React.FC = () => {
           }}>
             APPLE
           </Button>
-          <Button variant="outlined" startIcon={<Facebook />} sx={{
+          <Button variant="outlined" sx={{
             color: '#fff',
             borderColor: 'rgba(255,255,255,0.3)',
             fontWeight: 700,
@@ -216,7 +216,7 @@ const LoginForm: React.FC = () => {
           fontFamily: 'Montserrat, sans-serif',
           fontWeight: 500
         }}>
-          Chưa có tài khoản? <Link to="/register" style={{ color: '#60a5fa', fontWeight: 600 }}>Đăng kí</Link>
+          Chưa có tài khoản? <RouterLink to="/register" style={{ color: '#60a5fa', fontWeight: 600 }}>Đăng kí</RouterLink>
         </Typography>
       </Stack>
     </Paper>
