@@ -122,38 +122,102 @@ const AdminContent: React.FC<AdminContentProps> = ({
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 600 }}>Subscription Management</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => onOpenDialog('add')} sx={{ bgcolor: '#f57c00' }}>
-          Add Subscription
+          Create Subscription
         </Button>
       </Box>
       <Table>
         <TableHead>
           <TableRow sx={{ bgcolor: '#f8fafc' }}>
-            <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Subscription ID</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>User ID</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Plan</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Plan ID</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Start Date</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>End Date</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Amount</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Auto Renew</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Payment</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {subscriptions.map((subscription) => (
-            <TableRow key={subscription.id} hover>
-              <TableCell>{subscription.id}</TableCell>
-              <TableCell>{subscription.userId}</TableCell>
-              <TableCell><Chip label={subscription.plan} size="small" color="primary" /></TableCell>
-              <TableCell><Chip label={subscription.status} size="small" color={getStatusColor(subscription.status)} /></TableCell>
-              <TableCell>{subscription.startDate}</TableCell>
-              <TableCell>{subscription.endDate}</TableCell>
-              <TableCell>{subscription.amount}</TableCell>
-              <TableCell>
-                <Tooltip title="Edit"><IconButton size="small" onClick={() => onOpenDialog('edit', subscription)}><EditIcon /></IconButton></Tooltip>
-                <Tooltip title="Cancel"><IconButton size="small" color="error"><BlockIcon /></IconButton></Tooltip>
+          {subscriptions.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
+                <Typography color="textSecondary">Không có subscription nào</Typography>
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            subscriptions.map((subscription) => (
+              <TableRow key={subscription.subscriptionId} hover>
+                <TableCell>{subscription.subscriptionId}</TableCell>
+                <TableCell sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <Tooltip title={subscription.userId}>
+                    <span>{subscription.userId.substring(0, 8)}...</span>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={`Plan ${subscription.planId}`} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={subscription.status} 
+                    size="small" 
+                    color={getStatusColor(subscription.status)} 
+                  />
+                </TableCell>
+                <TableCell>{new Date(subscription.startDate).toLocaleDateString()}</TableCell>
+                <TableCell>{new Date(subscription.endDate).toLocaleDateString()}</TableCell>
+                <TableCell>
+                  <Chip 
+                    label={subscription.autoRenew ? 'Yes' : 'No'} 
+                    size="small" 
+                    color={subscription.autoRenew ? 'success' : 'default'}
+                    variant="outlined"
+                  />
+                </TableCell>
+                <TableCell>
+                  {subscription.payment ? (
+                    <Tooltip title={`Status: ${subscription.payment.status} | Method: ${subscription.payment.paymentMethod}`}>
+                      <Chip 
+                        label={`$${subscription.payment.amount}`} 
+                        size="small" 
+                        color={subscription.payment.status === 'pending' ? 'warning' : 'success'}
+                      />
+                    </Tooltip>
+                  ) : (
+                    <Chip label="No Payment" size="small" color="default" variant="outlined" />
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Tooltip title="View Details">
+                    <IconButton size="small" onClick={() => onOpenDialog('view', subscription)}>
+                      <ViewIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Edit">
+                    <IconButton size="small" onClick={() => onOpenDialog('edit', subscription)}>
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  {/* Comment: API không có endpoint delete subscription */}
+                  {/* <Tooltip title="Cancel Subscription">
+                    <IconButton 
+                      size="small" 
+                      color="error" 
+                      onClick={() => openDeleteConfirm('subscription', subscription.subscriptionId, `Subscription #${subscription.subscriptionId}`)}
+                    >
+                      <BlockIcon />
+                    </IconButton>
+                  </Tooltip> */}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </>

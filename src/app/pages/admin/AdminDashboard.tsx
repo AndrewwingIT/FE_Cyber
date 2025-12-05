@@ -10,16 +10,8 @@ import AdminPaymentManagement from '../../../components/Admin/AdminPaymentManage
 import FeatureService from '../../../app/services/FeatureService';
 import type { Feature } from '../../../app/services/FeatureService';
 import TrustedLinkService from '../../../app/services/TrustedLinkService';
-
-interface Subscription {
-  id: number;
-  userId: number;
-  plan: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  amount: string;
-}
+import SubscriptionService from '../../../app/services/SubscriptionService';
+import type { Subscription } from '../../../app/models/Subscription';
 
 interface SuspiciousLink {
   id: number;
@@ -58,11 +50,9 @@ const AdminDashboard: React.FC = () => {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [loadingFeatures, setLoadingFeatures] = useState(false);
 
-  const [subscriptions] = useState<Subscription[]>([
-    { id: 1, userId: 1, plan: 'BASIC', status: 'Active', startDate: '2024-01-15', endDate: '2024-02-15', amount: '$28' },
-    { id: 2, userId: 2, plan: 'PREMIUM', status: 'Active', startDate: '2024-01-20', endDate: '2024-02-20', amount: '$49' },
-    { id: 3, userId: 3, plan: 'PLUS', status: 'Expired', startDate: '2024-01-01', endDate: '2024-02-01', amount: '$35' }
-  ]);
+  // Subscriptions from API
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
 
   const [suspiciousLinks] = useState<SuspiciousLink[]>([
     { id: 1, url: 'https://fake-bank.com', reportedBy: 'John Doe', riskLevel: 'High', status: 'Under Review', reportDate: '2024-03-01' },
@@ -82,6 +72,7 @@ const AdminDashboard: React.FC = () => {
   // Load features from API
   useEffect(() => {
     loadFeatures();
+    loadSubscriptions();
     loadTrustedLinks();
   }, []);
 
@@ -133,6 +124,25 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const loadSubscriptions = async () => {
+    setLoadingSubscriptions(true);
+    try {
+      const response = await SubscriptionService.getAllSubscriptions();
+      if (response.success && response.data) {
+        const subsData = Array.isArray(response.data) ? response.data : [response.data];
+        setSubscriptions(subsData);
+      } else {
+        toast.error(response.message || 'Không lấy được danh sách subscriptions');
+        setSubscriptions([]);
+      }
+    } catch (error) {
+      toast.error('Lỗi khi tải danh sách subscriptions');
+      setSubscriptions([]);
+    } finally {
+      setLoadingSubscriptions(false);
+    }
+  };
+
   const handleDeleteFeature = async (id: number) => {
     try {
       const response = await FeatureService.deleteFeature(id);
@@ -153,12 +163,37 @@ const AdminDashboard: React.FC = () => {
       return;
     }
 
+    // Comment: API không có endpoint delete cho subscription
+    // if (type === 'subscription') {
+    //   handleCancelSubscription(id);
+    //   return;
+    // }
+
     if (type === 'trustedLink') {
       handleDeleteTrustedLink(id);
       return;
     }
     // Các type khác sẽ được implement sau
   };
+
+  // Comment: API không có endpoint delete subscription, chỉ có thể update status
+  // const handleCancelSubscription = async (subscriptionId: number) => {
+  //   if (!window.confirm('Bạn có chắc chắn muốn hủy subscription này?')) return;
+  //   
+  //   try {
+  //     const response = await SubscriptionService.updateSubscriptionStatus(subscriptionId, {
+  //       status: 'Cancelled'
+  //     });
+  //     if (response.success) {
+  //       toast.success(response.message || 'Hủy subscription thành công');
+  //       loadSubscriptions();
+  //     } else {
+  //       toast.error(response.message || 'Hủy subscription thất bại');
+  //     }
+  //   } catch (error) {
+  //     toast.error('Lỗi khi hủy subscription');
+  //   }
+  // };
 
   const handleDeleteTrustedLink = async (linkId: number) => {
     try {
@@ -188,9 +223,11 @@ const AdminDashboard: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedItem(null);
-    // Reload features after dialog closes (in case of add/edit)
+    // Reload data after dialog closes (in case of add/edit)
     if (currentTab === 0) {
       loadFeatures();
+    } else if (currentTab === 1) {
+      loadSubscriptions();
     }
   };
 
@@ -241,16 +278,22 @@ const AdminDashboard: React.FC = () => {
               )}
             </TabPanel>
             <TabPanel value={currentTab} index={1}>
-              <AdminContent
-                currentTab={1}
-                onOpenDialog={handleOpenDialog}
-                features={features}
-                subscriptions={subscriptions}
-                suspiciousLinks={suspiciousLinks}
-                trustedLinks={trustedLinks}
-                tenants={tenants}
-                onDelete={handleDelete}
-              />
+              {loadingSubscriptions ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <AdminContent
+                  currentTab={1}
+                  onOpenDialog={handleOpenDialog}
+                  features={features}
+                  subscriptions={subscriptions}
+                  suspiciousLinks={suspiciousLinks}
+                  trustedLinks={trustedLinks}
+                  tenants={tenants}
+                  onDelete={handleDelete}
+                />
+              )}
             </TabPanel>
             <TabPanel value={currentTab} index={2}>
               <AdminContent
@@ -303,6 +346,7 @@ const AdminDashboard: React.FC = () => {
             onRefresh={() => {
               // gọi loader phù hợp theo tab hiện tại
               if (currentTab === 0) return loadFeatures();
+              if (currentTab === 1) return loadSubscriptions();
               if (currentTab === 3) return loadTrustedLinks();
               // thêm các loader khác nếu có
               return Promise.resolve();
