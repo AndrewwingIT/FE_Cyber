@@ -18,6 +18,7 @@ import {
   Typography,
   Chip,
   CircularProgress,
+  TablePagination,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import PaymentService from '../../app/services/PaymentService';
@@ -29,32 +30,78 @@ const AdminPaymentManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [newStatus, setNewStatus] = useState<'completed' | 'failed' | 'cancelled'>('completed');
+  const [newStatus, setNewStatus] = useState<'pending' | 'succeeded'>('succeeded');
   const [notes, setNotes] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     loadPayments();
   }, []);
 
-  const loadPayments = async () => {
+  const loadPayments = async (status?: string) => {
     setLoading(true);
     try {
+      // Always get all payments, then filter on frontend
       const response = await PaymentService.getAllPayments();
-      if (response.success && Array.isArray(response.data)) {
-        setPayments(response.data);
-      } else if (response.success && response.data) {
-        setPayments([response.data]);
+      console.log('Payment response:', response);
+      
+      if (response.success && response.data) {
+        let paymentsData: Payment[] = [];
+        
+        // Handle if data is array
+        if (Array.isArray(response.data)) {
+          paymentsData = response.data;
+        } else if (typeof response.data === 'object') {
+          // Handle if data is a single object
+          paymentsData = [response.data];
+        }
+        
+        // Sort by paymentId ascending
+        paymentsData.sort((a, b) => a.paymentId - b.paymentId);
+        
+        // Filter on frontend if status specified
+        if (status && status !== 'all') {
+          const filtered = paymentsData.filter((p: Payment) => 
+            p.status.toLowerCase() === status.toLowerCase()
+          );
+          setPayments(filtered);
+        } else {
+          setPayments(paymentsData);
+        }
+      } else {
+        console.error('Payment response error:', response);
+        toast.error(response.message || 'Error loading payment list');
+        setPayments([]);
       }
-    } catch {
-      toast.error('Lỗi khi tải danh sách thanh toán');
+    } catch (error) {
+      console.error('Load payments error:', error);
+      toast.error('Error loading payment list');
+      setPayments([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleFilterChange = (status: string) => {
+    setFilterStatus(status);
+    setPage(0); // Reset to first page when filter changes
+    loadPayments(status);
+  };
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   const handleOpenDialog = (payment: Payment) => {
     setSelectedPayment(payment);
-    setNewStatus('completed');
+    setNewStatus('succeeded');
     setNotes('');
     setOpenDialog(true);
   };
@@ -62,7 +109,7 @@ const AdminPaymentManagement: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedPayment(null);
-    setNewStatus('completed');
+    setNewStatus('succeeded');
     setNotes('');
   };
 
@@ -71,68 +118,56 @@ const AdminPaymentManagement: React.FC = () => {
 
     try {
       setLoading(true);
+      console.log('Updating payment:', {
+        paymentId: selectedPayment.paymentId,
+        newStatus,
+        notes,
+      });
+      
       const response = await PaymentService.updatePaymentStatus(
-        selectedPayment.orderId,
+        String(selectedPayment.paymentId),
         newStatus,
         notes
       );
+      
+      console.log('Update response:', response);
 
       if (response.success) {
-        toast.success('Cập nhật trạng thái thành công!');
+        toast.success('Payment status updated successfully!');
         
-        // Gửi email thông báo
-        if (selectedPayment.userEmail) {
-          await EmailService.sendPaymentConfirmation(
-            selectedPayment.userEmail,
-            {
-              orderId: selectedPayment.orderId,
-              packageName: selectedPayment.packageName,
-              status: newStatus,
-              amount: selectedPayment.amount,
-            }
-          );
-        }
-
-        // Reload danh sách
-        await loadPayments();
+        // Reload list
+        await loadPayments(filterStatus);
         handleCloseDialog();
       } else {
-        toast.error(response.message);
+        console.error('Update failed:', response);
+        toast.error(response.message || 'Failed to update payment status');
       }
-    } catch {
-      toast.error('Lỗi khi cập nhật trạng thái');
+    } catch (error) {
+      console.error('Update error:', error);
+      toast.error('Error updating payment status');
     } finally {
       setLoading(false);
     }
   };
 
   const getStatusColor = (status: string): 'success' | 'warning' | 'error' | 'default' => {
-    switch (status) {
-      case 'completed':
-        return 'success';
-      case 'pending':
-        return 'warning';
-      case 'failed':
-      case 'cancelled':
-        return 'error';
-      default:
-        return 'default';
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus === 'succeeded') {
+      return 'success';
+    } else if (lowerStatus === 'pending') {
+      return 'warning';
     }
+    return 'default';
   };
 
   const getStatusLabel = (status: string): string => {
-    switch (status) {
-      case 'completed':
-        return 'Đã thanh toán';
-      case 'pending':
-        return 'Chưa thanh toán';
-      case 'failed':
-        return 'Thất bại';
-      case 'cancelled':
-        return 'Đã hủy';
-      default:
-        return status;
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus === 'succeeded') {
+      return 'Succeeded';
+    } else if (lowerStatus === 'pending') {
+      return 'Pending';
     }
+    return status;
   };
 
   if (loading && payments.length === 0) {
@@ -145,46 +180,70 @@ const AdminPaymentManagement: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-          Quản Lý Thanh Toán ({payments.length})
+          Payment Management ({payments.length})
         </Typography>
-        <Button
-          variant="contained"
-          onClick={loadPayments}
-          disabled={loading}
-        >
-          Tải lại
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <TextField
+            select
+            size="small"
+            label="Filter by Status"
+            value={filterStatus}
+            onChange={(e) => handleFilterChange(e.target.value)}
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value="all">All Payments</MenuItem>
+            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="succeeded">Succeeded</MenuItem>
+          </TextField>
+          <Button
+            variant="contained"
+            onClick={() => loadPayments(filterStatus)}
+            disabled={loading}
+          >
+            Reload
+          </Button>
+        </Box>
       </Box>
 
       <TableContainer component={Paper}>
         <Table>
           <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
             <TableRow>
-              <TableCell><strong>Mã đơn hàng</strong></TableCell>
-              <TableCell><strong>Email</strong></TableCell>
-              <TableCell><strong>Gói</strong></TableCell>
-              <TableCell><strong>Số tiền</strong></TableCell>
-              <TableCell><strong>Trạng thái</strong></TableCell>
-              <TableCell><strong>Ngày tạo</strong></TableCell>
-              <TableCell align="center"><strong>Hành động</strong></TableCell>
+              <TableCell><strong>Payment ID</strong></TableCell>
+              <TableCell><strong>Transaction ID</strong></TableCell>
+              <TableCell><strong>Subscription ID</strong></TableCell>
+              <TableCell><strong>Amount</strong></TableCell>
+              <TableCell><strong>Method</strong></TableCell>
+              <TableCell><strong>Status</strong></TableCell>
+              <TableCell><strong>Payment Date</strong></TableCell>
+              <TableCell align="center"><strong>Actions</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                  <Typography color="textSecondary">Không có đơn thanh toán nào</Typography>
+                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                  <Typography color="textSecondary">No payments available</Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              payments.map((payment) => (
-                <TableRow key={payment.id} hover>
-                  <TableCell>{payment.orderId}</TableCell>
-                  <TableCell>{payment.userEmail}</TableCell>
-                  <TableCell>{payment.packageName}</TableCell>
-                  <TableCell>{payment.amount}</TableCell>
+              payments
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((payment) => (
+                <TableRow key={payment.paymentId} hover>
+                  <TableCell>{payment.paymentId}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontSize: '12px', fontFamily: 'monospace' }}>
+                      {payment.transactionId || '-'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{payment.subscriptionId}</TableCell>
+                  <TableCell>
+                    <Chip label={`$${payment.amount.toFixed(2)}`} size="small" color="primary" variant="outlined" />
+                  </TableCell>
+                  <TableCell>{payment.paymentMethod || '-'}</TableCell>
                   <TableCell>
                     <Chip
                       label={getStatusLabel(payment.status)}
@@ -192,15 +251,15 @@ const AdminPaymentManagement: React.FC = () => {
                       size="small"
                     />
                   </TableCell>
-                  <TableCell>{new Date(payment.createdAt).toLocaleDateString('vi-VN')}</TableCell>
+                  <TableCell>{new Date(payment.paymentDate).toLocaleDateString('vi-VN')}</TableCell>
                   <TableCell align="center">
                     <Button
                       size="small"
                       variant="outlined"
                       onClick={() => handleOpenDialog(payment)}
-                      disabled={payment.status === 'completed'}
+                      disabled={payment.status.toLowerCase() === 'succeeded'}
                     >
-                      {payment.status === 'completed' ? 'Đã xác nhận' : 'Xác nhận'}
+                      {payment.status.toLowerCase() === 'succeeded' ? 'Confirmed' : 'Confirm'}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -208,6 +267,15 @@ const AdminPaymentManagement: React.FC = () => {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          component="div"
+          count={payments.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </TableContainer>
 
       {/* Update Status Dialog */}
@@ -217,39 +285,44 @@ const AdminPaymentManagement: React.FC = () => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Cập Nhật Trạng Thái Thanh Toán</DialogTitle>
+        <DialogTitle>Update Payment Status</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           {selectedPayment && (
             <>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Mã đơn:</strong> {selectedPayment.orderId}
+                <strong>Payment ID:</strong> {selectedPayment.paymentId}
               </Typography>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Email:</strong> {selectedPayment.userEmail}
+                <strong>Transaction ID:</strong> {selectedPayment.transactionId || '-'}
               </Typography>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Gói:</strong> {selectedPayment.packageName} ({selectedPayment.amount})
+                <strong>Subscription ID:</strong> {selectedPayment.subscriptionId}
+              </Typography>
+              <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
+                <strong>Amount:</strong> ${selectedPayment.amount.toFixed(2)}
+              </Typography>
+              <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
+                <strong>Method:</strong> {selectedPayment.paymentMethod || '-'}
               </Typography>
 
               <TextField
                 select
                 fullWidth
-                label="Trạng thái"
+                label="Status"
                 value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value as 'completed' | 'failed' | 'cancelled')}
+                onChange={(e) => setNewStatus(e.target.value as 'pending' | 'succeeded')}
                 sx={{ mb: 2 }}
               >
-                <MenuItem value="completed">Đã thanh toán</MenuItem>
-                <MenuItem value="failed">Thất bại</MenuItem>
-                <MenuItem value="cancelled">Đã hủy</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="succeeded">Succeeded</MenuItem>
               </TextField>
 
               <TextField
                 fullWidth
                 multiline
                 rows={3}
-                label="Ghi chú"
-                placeholder="Nhập ghi chú (tùy chọn)"
+                label="Notes"
+                placeholder="Enter notes (optional)"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -257,13 +330,13 @@ const AdminPaymentManagement: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Hủy</Button>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button
             onClick={handleUpdateStatus}
             variant="contained"
             disabled={loading}
           >
-            {loading ? 'Đang xử lý...' : 'Cập Nhật'}
+            {loading ? 'Processing...' : 'Update'}
           </Button>
         </DialogActions>
       </Dialog>
