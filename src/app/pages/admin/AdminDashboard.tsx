@@ -12,6 +12,8 @@ import type { Feature } from '../../../app/services/FeatureService';
 import TrustedLinkService from '../../../app/services/TrustedLinkService';
 import SubscriptionService from '../../../app/services/SubscriptionService';
 import type { Subscription } from '../../../app/models/Subscription';
+import TenantService from '../../../app/services/TenantService';
+import type { Tenant } from '../../../app/models/Tenant';
 
 interface SuspiciousLink {
   id: number;
@@ -29,15 +31,6 @@ interface TrustedLink {
   category: string;
   status: string;
   addedDate: string;
-}
-
-interface Tenant {
-  id: number;
-  name: string;
-  domain: string;
-  status: string;
-  users: number;
-  createdDate: string;
 }
 
 const AdminDashboard: React.FC = () => {
@@ -63,17 +56,15 @@ const AdminDashboard: React.FC = () => {
   const [trustedLinks, setTrustedLinks] = useState<TrustedLink[]>([]);
   const [loadingTrustedLinks, setLoadingTrustedLinks] = useState(false);
 
-  const [tenants] = useState<Tenant[]>([
-    { id: 1, name: 'Cyber Rampart Main', domain: 'cyberrampart.com', status: 'Active', users: 150, createdDate: '2024-01-01' },
-    { id: 2, name: 'Enterprise Client A', domain: 'client-a.com', status: 'Active', users: 75, createdDate: '2024-01-15' },
-    { id: 3, name: 'Demo Environment', domain: 'demo.cyberrampart.com', status: 'Inactive', users: 10, createdDate: '2024-02-01' }
-  ]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
 
   // Load features from API
   useEffect(() => {
     loadFeatures();
     loadSubscriptions();
     loadTrustedLinks();
+    loadTenants();
   }, []);
 
   const loadTrustedLinks = async () => {
@@ -102,6 +93,26 @@ const AdminDashboard: React.FC = () => {
       setTrustedLinks([]);
     } finally {
       setLoadingTrustedLinks(false);
+    }
+  };
+
+  const loadTenants = async () => {
+    setLoadingTenants(true);
+    try {
+      const res = await TenantService.getAllTenants();
+      if (res.success && res.data) {
+        const tenantsData = Array.isArray(res.data) ? res.data : [res.data];
+        setTenants(tenantsData);
+      } else {
+        toast.error(res.message || 'Không lấy được danh sách tenants');
+        setTenants([]);
+      }
+    } catch (err) {
+      console.error('Load tenants error', err);
+      toast.error('Lỗi khi tải tenants');
+      setTenants([]);
+    } finally {
+      setLoadingTenants(false);
     }
   };
 
@@ -173,6 +184,11 @@ const AdminDashboard: React.FC = () => {
       handleDeleteTrustedLink(id);
       return;
     }
+
+    if (type === 'tenant') {
+      handleDeleteTenant(id);
+      return;
+    }
     // Các type khác sẽ được implement sau
   };
 
@@ -207,6 +223,21 @@ const AdminDashboard: React.FC = () => {
     } catch (err) {
       console.error('Delete trusted link error', err);
       toast.error('Lỗi khi xóa trusted link');
+    }
+  };
+
+  const handleDeleteTenant = async (tenantId: number) => {
+    try {
+      const res = await TenantService.deleteTenant(tenantId);
+      if (res.success) {
+        toast.success(res.message || 'Xóa tenant thành công');
+        await loadTenants();
+      } else {
+        toast.error(res.message || 'Xóa tenant thất bại');
+      }
+    } catch (err) {
+      console.error('Delete tenant error', err);
+      toast.error('Lỗi khi xóa tenant');
     }
   };
 
@@ -348,6 +379,7 @@ const AdminDashboard: React.FC = () => {
               if (currentTab === 0) return loadFeatures();
               if (currentTab === 1) return loadSubscriptions();
               if (currentTab === 3) return loadTrustedLinks();
+              if (currentTab === 4) return loadTenants();
               // thêm các loader khác nếu có
               return Promise.resolve();
             }}

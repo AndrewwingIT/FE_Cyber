@@ -18,6 +18,7 @@ import { toast } from 'react-toastify';
 import FeatureService from '../../app/services/FeatureService';
 import TrustedLinkService from '../../app/services/TrustedLinkService';
 import SubscriptionService from '../../app/services/SubscriptionService';
+import TenantService from '../../app/services/TenantService';
 
 interface AdminDialogProps {
   open: boolean;
@@ -50,6 +51,10 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
     userId: '',
     autoRenew: true,
     endDate: '',
+    // tenant fields
+    companyName: '',
+    contactPhone: '',
+    address: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -68,6 +73,10 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
         userId: selectedItem.userId || '',
         autoRenew: selectedItem.autoRenew ?? true,
         endDate: selectedItem.endDate ? selectedItem.endDate.split('T')[0] : '',
+        // tenant fields
+        companyName: selectedItem.companyName || '',
+        contactPhone: selectedItem.contactPhone || '',
+        address: selectedItem.address || '',
       });
     } else {
       setFormData({
@@ -82,6 +91,9 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
         userId: '',
         autoRenew: true,
         endDate: '',
+        companyName: '',
+        contactPhone: '',
+        address: '',
       });
     }
   }, [selectedItem, dialogType, open]);
@@ -112,6 +124,13 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
     if (currentTab === 3) {
       if (!formData.domain?.trim() || !formData.url?.trim()) {
         toast.error('Vui lòng điền domain và url cho trusted link');
+        return;
+      }
+    }
+
+    if (currentTab === 4) {
+      if (!formData.companyName?.trim() || !formData.domain?.trim()) {
+        toast.error('Vui lòng điền tên công ty và domain cho tenant');
         return;
       }
     }
@@ -171,6 +190,28 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
         } else if (dialogType === 'edit' && selectedItem) {
           const id = (selectedItem as any).linkId ?? (selectedItem as any).id;
           response = await TrustedLinkService.updateTrustedLink(Number(id), payload);
+        }
+      }
+
+      // Tenants tab
+      if (currentTab === 4) {
+        if (dialogType === 'add') {
+          const createPayload = {
+            companyName: formData.companyName.trim(),
+            domain: formData.domain.trim(),
+            contactPhone: formData.contactPhone?.trim() || undefined,
+            address: formData.address?.trim() || undefined,
+          };
+          response = await TenantService.createTenant(createPayload);
+        } else if (dialogType === 'edit' && selectedItem) {
+          const updatePayload = {
+            companyName: formData.companyName.trim(),
+            domain: formData.domain.trim(),
+            contactPhone: formData.contactPhone?.trim() || undefined,
+            address: formData.address?.trim() || undefined,
+            status: formData.status || 'Active',
+          };
+          response = await TenantService.updateTenant((selectedItem as any).tenantId, updatePayload);
         }
       }
 
@@ -392,6 +433,93 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
     </Box>
   );
 
+  const renderTenantForm = () => (
+    <Box sx={{ pt: 2 }}>
+      <TextField
+        label="Company Name"
+        fullWidth
+        value={formData.companyName}
+        onChange={(e) => handleChange('companyName', e.target.value)}
+        sx={{ mb: 2 }}
+        disabled={dialogType === 'view' || loading}
+        required
+        helperText="Tên công ty hoặc tổ chức"
+      />
+      <TextField
+        label="Domain"
+        fullWidth
+        value={formData.domain}
+        onChange={(e) => handleChange('domain', e.target.value)}
+        sx={{ mb: 2 }}
+        disabled={dialogType === 'view' || loading}
+        required
+        helperText="Ví dụ: company.com"
+      />
+      <TextField
+        label="Contact Phone"
+        fullWidth
+        value={formData.contactPhone}
+        onChange={(e) => handleChange('contactPhone', e.target.value)}
+        sx={{ mb: 2 }}
+        disabled={dialogType === 'view' || loading}
+        helperText="Số điện thoại liên hệ"
+      />
+      <TextField
+        label="Address"
+        fullWidth
+        value={formData.address}
+        onChange={(e) => handleChange('address', e.target.value)}
+        sx={{ mb: 2 }}
+        disabled={dialogType === 'view' || loading}
+        multiline
+        rows={2}
+        helperText="Địa chỉ công ty"
+      />
+
+      {dialogType === 'edit' && (
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel id="tenant-status-label">Status</InputLabel>
+          <Select
+            labelId="tenant-status-label"
+            label="Status"
+            value={formData.status}
+            onChange={(e) => handleChange('status', String(e.target.value))}
+            disabled={dialogType === 'view' || loading}
+          >
+            <MenuItem value="Active">Active</MenuItem>
+            <MenuItem value="Inactive">Inactive</MenuItem>
+          </Select>
+        </FormControl>
+      )}
+
+      {dialogType === 'view' && selectedItem && (
+        <>
+          {/* <TextField
+            label="Tenant ID"
+            fullWidth
+            value={(selectedItem as any).tenantId || ''}
+            sx={{ mb: 2 }}
+            disabled
+          />
+          <TextField
+            label="Created At"
+            fullWidth
+            value={(selectedItem as any).createdAt ? new Date((selectedItem as any).createdAt).toLocaleString() : ''}
+            sx={{ mb: 2 }}
+            disabled
+          /> */}
+          <TextField
+            label="Status"
+            fullWidth
+            value={(selectedItem as any).status || ''}
+            sx={{ mb: 2 }}
+            disabled
+          />
+        </>
+      )}
+    </Box>
+  );
+
   const getTitle = () => {
     if (currentTab === 0) {
       if (dialogType === 'add') return 'Add New Feature';
@@ -408,6 +536,11 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
       if (dialogType === 'edit') return 'Edit Trusted Link';
       if (dialogType === 'view') return 'View Trusted Link';
     }
+    if (currentTab === 4) {
+      if (dialogType === 'add') return 'Add New Tenant';
+      if (dialogType === 'edit') return 'Edit Tenant';
+      if (dialogType === 'view') return 'View Tenant Details';
+    }
     return 'Item Details';
   };
 
@@ -423,10 +556,11 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
         {currentTab === 0 && renderFeatureForm()}
         {currentTab === 1 && renderSubscriptionForm()}
         {currentTab === 3 && renderTrustedLinkForm()}
-        {currentTab !== 0 && currentTab !== 1 && currentTab !== 3 && (
+        {currentTab === 4 && renderTenantForm()}
+        {currentTab !== 0 && currentTab !== 1 && currentTab !== 3 && currentTab !== 4 && (
           <Box sx={{ pt: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              Form cho tab này sẽ được implement sau.
+              Form chưa được triển khai cho tab này.
             </Typography>
           </Box>
         )}

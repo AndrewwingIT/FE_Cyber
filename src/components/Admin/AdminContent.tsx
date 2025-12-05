@@ -328,34 +328,53 @@ const AdminContent: React.FC<AdminContentProps> = ({
         <TableHead>
           <TableRow sx={{ bgcolor: '#f8fafc' }}>
             <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Tenant Name</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Company Name</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Domain</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Contact Phone</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Users</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Created Date</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {tenants.map((tenant) => (
-            <TableRow key={tenant.id} hover>
-              <TableCell>{tenant.id}</TableCell>
-              <TableCell>{tenant.name}</TableCell>
-              <TableCell>{tenant.domain}</TableCell>
-              <TableCell><Chip label={tenant.status} size="small" color={getStatusColor(tenant.status)} /></TableCell>
-              <TableCell>
-                <Badge badgeContent={tenant.users} color="primary">
-                  <PeopleIcon />
-                </Badge>
-              </TableCell>
-              <TableCell>{tenant.createdDate}</TableCell>
-              <TableCell>
-                <Tooltip title="View"><IconButton size="small" onClick={() => onOpenDialog('view', tenant)}><ViewIcon /></IconButton></Tooltip>
-                <Tooltip title="Edit"><IconButton size="small" onClick={() => onOpenDialog('edit', tenant)}><EditIcon /></IconButton></Tooltip>
-                <Tooltip title="Delete"><IconButton size="small" color="error"><DeleteIcon /></IconButton></Tooltip>
+          {tenants.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Chưa có tenant nào
+                </Typography>
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            tenants.map((tenant: any) => (
+              <TableRow key={tenant.tenantId} hover>
+                <TableCell>{tenant.tenantId}</TableCell>
+                <TableCell sx={{ fontWeight: 500 }}>{tenant.companyName}</TableCell>
+                <TableCell>
+                  <Chip 
+                    label={tenant.domain} 
+                    size="small" 
+                    color="info"
+                    variant="outlined"
+                  />
+                </TableCell>
+                <TableCell>{tenant.contactPhone || '-'}</TableCell>
+                <TableCell><Chip label={tenant.status} size="small" color={getStatusColor(tenant.status)} /></TableCell>
+                <TableCell>
+                  <Tooltip title="View"><IconButton size="small" onClick={() => onOpenDialog('view', tenant)}><ViewIcon /></IconButton></Tooltip>
+                  <Tooltip title="Edit"><IconButton size="small" onClick={() => onOpenDialog('edit', tenant)}><EditIcon /></IconButton></Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton 
+                      size="small" 
+                      color="error"
+                      onClick={() => openDeleteConfirm('tenant', tenant.tenantId, tenant.companyName)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </>
