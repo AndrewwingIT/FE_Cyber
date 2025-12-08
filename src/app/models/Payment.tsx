@@ -44,7 +44,7 @@ export const PACKAGES: Package[] = [
     id: 'basic',
     name: 'BASIC',
     subscriptionId: 1,
-    price: 2800,
+    price: 40000,
     duration: 'Hàng tháng',
     features: [
       'Quyền truy cập vào các khóa học dành cho người mới bắt đầu.',
@@ -57,7 +57,7 @@ export const PACKAGES: Package[] = [
     id: 'plus',
     name: 'PLUS',
     subscriptionId: 2,
-    price: 3500,
+    price: 100000,
     duration: 'Hàng tháng',
     highlighted: true,
     features: [
@@ -72,7 +72,7 @@ export const PACKAGES: Package[] = [
     id: 'premium',
     name: 'PREMIUM',
     subscriptionId: 3,
-    price: 4900,
+    price: 200000,
     duration: 'Hàng tháng',
     features: [
       'Tất cả những gì có trong gói Plus.',
