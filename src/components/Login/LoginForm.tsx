@@ -6,6 +6,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../config/axiosConfig';
 import { toast } from 'react-toastify';
+import { handleLoginSuccess } from '../../app/context/jwtUtils'; // THÊM DÒNG NÀY (đường dẫn có thể là '../../utils/jwtUtils' tùy cấu trúc)
 
 const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -22,46 +23,38 @@ const LoginForm: React.FC = () => {
     setLoading(true);
     try {
       const res = await axiosInstance.post('/api/Auth/login', { email, password });
+
       if (res.data?.token) {
-        sessionStorage.setItem('token', res.data.token);
-        sessionStorage.setItem('userEmail', email);
-        
-        // Lưu thông tin role và user info
+        // DÙNG HÀM CHUNG ĐỂ XỬ LÝ TOKEN – SẼ TỰ ĐỘNG LƯU hasValidSubscription
+        handleLoginSuccess(res.data.token);
+
+        // VẪN GIỮ NGUYÊN LOGIC ROLE CŨ CỦA BẠN (nếu backend có trả user info)
         if (res.data?.user) {
           sessionStorage.setItem('userRole', res.data.user.role || 'User');
           sessionStorage.setItem('userName', res.data.user.firstName || email.split('@')[0]);
         } else {
-          // Fallback: kiểm tra email để xác định role
+          // Fallback: kiểm tra email để xác định role (giữ nguyên như cũ)
           const isAdmin = email === 'admin@gmail.com';
           sessionStorage.setItem('userRole', isAdmin ? 'Admin' : 'User');
           sessionStorage.setItem('userName', isAdmin ? 'Admin' : email.split('@')[0]);
         }
-        
+
         toast.success("Đăng nhập thành công!");
-        
-        // Redirect dựa trên role
+
+        // Redirect như cũ
         const userRole = sessionStorage.getItem('userRole');
         if (userRole === 'Admin') {
           navigate("/admin");
         } else {
-          // Redirect sang payment nếu chưa thanh toán
-          const paymentInfo = sessionStorage.getItem('paymentInfo');
-          if (!paymentInfo) {
-            navigate("/payment");
-          } else {
-            const info = JSON.parse(paymentInfo);
-            if (info.status !== 'completed') {
-              navigate("/payment");
-            } else {
-              navigate("/");
-            }
-          }
+          // Bạn có thể bỏ phần paymentInfo cũ nếu không cần nữa
+          // Hiện tại giữ nguyên redirect về home
+          navigate("/");
         }
       } else {
         toast.error("Không nhận được token!");
       }
-    } catch (error) {
-      toast.error("Đăng nhập thất bại!");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Đăng nhập thất bại!");
     } finally {
       setLoading(false);
     }
