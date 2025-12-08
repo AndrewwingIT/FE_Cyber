@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import {
   Paper, Stack, TextField, Button, IconButton, InputAdornment, Divider, Typography
 } from '@mui/material';
-import { Visibility, VisibilityOff, Google, Apple, Facebook } from '@mui/icons-material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../config/axiosConfig';
 import { toast } from 'react-toastify';
+import { handleLoginSuccess } from '../../app/context/jwtUtils'; // THÊM DÒNG NÀY (đường dẫn có thể là '../../utils/jwtUtils' tùy cấu trúc)
 
 const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -22,35 +23,38 @@ const LoginForm: React.FC = () => {
     setLoading(true);
     try {
       const res = await axiosInstance.post('/api/Auth/login', { email, password });
+
       if (res.data?.token) {
-        sessionStorage.setItem('token', res.data.token);
-        sessionStorage.setItem('userEmail', email);
-        
-        // Lưu thông tin role và user info
+        // DÙNG HÀM CHUNG ĐỂ XỬ LÝ TOKEN – SẼ TỰ ĐỘNG LƯU hasValidSubscription
+        handleLoginSuccess(res.data.token);
+
+        // VẪN GIỮ NGUYÊN LOGIC ROLE CŨ CỦA BẠN (nếu backend có trả user info)
         if (res.data?.user) {
           sessionStorage.setItem('userRole', res.data.user.role || 'User');
           sessionStorage.setItem('userName', res.data.user.firstName || email.split('@')[0]);
         } else {
-          // Fallback: kiểm tra email để xác định role
+          // Fallback: kiểm tra email để xác định role (giữ nguyên như cũ)
           const isAdmin = email === 'admin@gmail.com';
           sessionStorage.setItem('userRole', isAdmin ? 'Admin' : 'User');
           sessionStorage.setItem('userName', isAdmin ? 'Admin' : email.split('@')[0]);
         }
-        
+
         toast.success("Đăng nhập thành công!");
-        
-        // Redirect dựa trên role
+
+        // Redirect như cũ
         const userRole = sessionStorage.getItem('userRole');
         if (userRole === 'Admin') {
           navigate("/admin");
         } else {
+          // Bạn có thể bỏ phần paymentInfo cũ nếu không cần nữa
+          // Hiện tại giữ nguyên redirect về home
           navigate("/");
         }
       } else {
         toast.error("Không nhận được token!");
       }
-    } catch {
-      toast.error("Đăng nhập thất bại!");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Đăng nhập thất bại!");
     } finally {
       setLoading(false);
     }
@@ -164,7 +168,7 @@ const LoginForm: React.FC = () => {
           Hoặc tiếp tục với
         </Divider>
         <Stack direction="row" spacing={2} justifyContent="center">
-          <Button variant="outlined" startIcon={<Google />} sx={{
+          <Button variant="outlined" sx={{
             color: '#fff',
             borderColor: 'rgba(255,255,255,0.3)',
             fontWeight: 700,
@@ -175,7 +179,7 @@ const LoginForm: React.FC = () => {
           }}>
             GOOGLE
           </Button>
-          <Button variant="outlined" startIcon={<Apple />} sx={{
+          <Button variant="outlined" sx={{
             color: '#fff',
             borderColor: 'rgba(255,255,255,0.3)',
             fontWeight: 700,
@@ -186,7 +190,7 @@ const LoginForm: React.FC = () => {
           }}>
             APPLE
           </Button>
-          <Button variant="outlined" startIcon={<Facebook />} sx={{
+          <Button variant="outlined" sx={{
             color: '#fff',
             borderColor: 'rgba(255,255,255,0.3)',
             fontWeight: 700,
@@ -205,7 +209,7 @@ const LoginForm: React.FC = () => {
           fontFamily: 'Montserrat, sans-serif',
           fontWeight: 500
         }}>
-          Chưa có tài khoản? <Link to="/register" style={{ color: '#60a5fa', fontWeight: 600 }}>Đăng kí</Link>
+          Chưa có tài khoản? <RouterLink to="/register" style={{ color: '#60a5fa', fontWeight: 600 }}>Đăng kí</RouterLink>
         </Typography>
       </Stack>
     </Paper>

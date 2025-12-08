@@ -1,14 +1,13 @@
 import React from 'react';
 import { Box, Container, Typography, IconButton } from '@mui/material';
-import {Facebook, Twitter, Instagram, YouTube, LinkedIn } from '@mui/icons-material';
 import Logo from '../../../assets/logo.svg';
 const Footer: React.FC = () => {
   const socialLinks = [
-    { icon: <Facebook />, color: '#1877f2' },
-    { icon: <Twitter />, color: '#1da1f2' },
-    { icon: <Instagram />, color: '#e4405f' },
-    { icon: <YouTube />, color: '#ff0000' },
-    { icon: <LinkedIn />, color: '#0077b5' },
+    { icon: 'FB', color: '#1877f2' },
+    { icon: 'TW', color: '#1da1f2' },
+    { icon: 'IG', color: '#e4405f' },
+    { icon: 'YT', color: '#ff0000' },
+    { icon: 'LI', color: '#0077b5' },
   ];
 
   return (
@@ -41,7 +40,9 @@ const Footer: React.FC = () => {
                     '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' }
                   }}
                 >
-                  {social.icon}
+                  <Typography variant="body2" sx={{ fontSize: '12px', fontWeight: 'bold' }}>
+                    {social.icon}
+                  </Typography>
                 </IconButton>
               ))}
             </Box>
