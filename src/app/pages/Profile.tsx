@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Drawer, AppBar, Toolbar, Typography, List, ListItem,
-  ListItemIcon, ListItemText, Avatar, Divider, Divider as DividerIcon, Paper, Chip,
+  ListItemIcon, ListItemText, Avatar, Divider, Paper, Chip,
   Button, Breadcrumbs, Link, Grid, Alert, Collapse, IconButton
 } from '@mui/material';
 import {
