@@ -23,7 +23,7 @@ export interface Payment {
 export interface PaymentResponse {
   success: boolean;
   message: string;
-  data?: Payment;
+  data?: Payment | Payment[];
   error?: any;
 }
 

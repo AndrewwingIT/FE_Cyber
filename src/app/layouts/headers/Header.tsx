@@ -14,7 +14,7 @@ import { toast } from 'react-toastify';
 
 const Header: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
+  const [, setUserEmail] = useState('');
   const [userRole, setUserRole] = useState('');
   const [userName, setUserName] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);

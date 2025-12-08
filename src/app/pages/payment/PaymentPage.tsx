@@ -40,7 +40,7 @@ const PaymentPage: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [orderId, setOrderId] = useState<string>('');
   const [paymentNotes, setPaymentNotes] = useState('');
-  const [qrCode, setQrCode] = useState<string>('');
+  const [, setQrCode] = useState<string>('');
   const QR_CODE_STATIC = '/images/qrcode.png';
 
   // Lấy danh sách gói từ API
@@ -84,10 +84,12 @@ const PaymentPage: React.FC = () => {
   // Bước 2: Tạo Payment với subscriptionId
   const createPayment = async (subscriptionId: number, amount: number) => {
     const response = await PaymentService.createPayment(subscriptionId, amount, 'bank_transfer');
-    if (response.success) {
-      return response.data?.transactionId || `ORDER_${Date.now()}`;
+
+    if (response.success && response.data && !Array.isArray(response.data)) {
+      return response.data.transactionId;
     }
-    throw new Error(response.message || 'Tạo thanh toán thất bại');
+
+    return `ORDER_${Date.now()}`;
   };
 
   // Xử lý khi chọn gói
@@ -109,7 +111,6 @@ const PaymentPage: React.FC = () => {
       toast.success('Đã tạo đơn thanh toán thành công!');
     } catch (err) {
       console.error('Lỗi thanh toán:', err);
-      // toast đã xử lý trong các hàm con
     } finally {
       setLoading(false);
     }

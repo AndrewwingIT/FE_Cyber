@@ -56,10 +56,10 @@ const AdminDashboard: React.FC = () => {
   ]);
 
   const [trustedLinks, setTrustedLinks] = useState<TrustedLink[]>([]);
-  const [loadingTrustedLinks, setLoadingTrustedLinks] = useState(false);
+  const [, setLoadingTrustedLinks] = useState(false);
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [loadingTenants, setLoadingTenants] = useState(false);
+  const [, setLoadingTenants] = useState(false);
 
   // Suspicious lists from API
   const [suspiciousRecent, setSuspiciousRecent] = useState<RecentSuspicious[]>([]);
