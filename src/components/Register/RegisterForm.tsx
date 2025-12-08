@@ -3,7 +3,7 @@ import {
   Paper, Stack, TextField, Button, IconButton, InputAdornment, Divider, Typography, Box
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink} from 'react-router-dom';
 import axiosInstance from '../../config/axiosConfig';
 import { toast } from 'react-toastify';
 
@@ -16,7 +16,6 @@ const RegisterForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const isValidEmail = (email: string) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

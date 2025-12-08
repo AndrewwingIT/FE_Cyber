@@ -10,7 +10,6 @@ import AddIcon from '@mui/icons-material/Add';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ViewIcon from '@mui/icons-material/Visibility';
-import PeopleIcon from '@mui/icons-material/People';
 
 interface AdminContentProps {
   currentTab: number;
