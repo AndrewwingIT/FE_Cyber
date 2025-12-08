@@ -12,16 +12,10 @@ import type { Feature } from '../../../app/services/FeatureService';
 import TrustedLinkService from '../../../app/services/TrustedLinkService';
 import SuspiciousLinkService from '../../../app/services/SuspiciousLinkService';
 import type { RecentSuspicious, PhishingSuspicious } from '../../../app/services/SuspiciousLinkService';
-
-interface Subscription {
-  id: number;
-  userId: number;
-  plan: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  amount: string;
-}
+import SubscriptionService from '../../../app/services/SubscriptionService';
+import type { Subscription } from '../../../app/models/Subscription';
+import TenantService from '../../../app/services/TenantService';
+import type { Tenant } from '../../../app/models/Tenant';
 
 interface SuspiciousLink {
   id: number;
@@ -41,15 +35,6 @@ interface TrustedLink {
   addedDate: string;
 }
 
-interface Tenant {
-  id: number;
-  name: string;
-  domain: string;
-  status: string;
-  users: number;
-  createdDate: string;
-}
-
 const AdminDashboard: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [openDialog, setOpenDialog] = useState(false);
@@ -60,11 +45,9 @@ const AdminDashboard: React.FC = () => {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [loadingFeatures, setLoadingFeatures] = useState(false);
 
-  const [subscriptions] = useState<Subscription[]>([
-    { id: 1, userId: 1, plan: 'BASIC', status: 'Active', startDate: '2024-01-15', endDate: '2024-02-15', amount: '$28' },
-    { id: 2, userId: 2, plan: 'PREMIUM', status: 'Active', startDate: '2024-01-20', endDate: '2024-02-20', amount: '$49' },
-    { id: 3, userId: 3, plan: 'PLUS', status: 'Expired', startDate: '2024-01-01', endDate: '2024-02-01', amount: '$35' }
-  ]);
+  // Subscriptions from API
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
 
   const [suspiciousLinks] = useState<SuspiciousLink[]>([
     { id: 1, url: 'https://fake-bank.com', reportedBy: 'John Doe', riskLevel: 'High', status: 'Under Review', reportDate: '2024-03-01' },
@@ -75,11 +58,8 @@ const AdminDashboard: React.FC = () => {
   const [trustedLinks, setTrustedLinks] = useState<TrustedLink[]>([]);
   const [loadingTrustedLinks, setLoadingTrustedLinks] = useState(false);
 
-  const [tenants] = useState<Tenant[]>([
-    { id: 1, name: 'Cyber Rampart Main', domain: 'cyberrampart.com', status: 'Active', users: 150, createdDate: '2024-01-01' },
-    { id: 2, name: 'Enterprise Client A', domain: 'client-a.com', status: 'Active', users: 75, createdDate: '2024-01-15' },
-    { id: 3, name: 'Demo Environment', domain: 'demo.cyberrampart.com', status: 'Inactive', users: 10, createdDate: '2024-02-01' }
-  ]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
 
   // Suspicious lists from API
   const [suspiciousRecent, setSuspiciousRecent] = useState<RecentSuspicious[]>([]);
@@ -90,9 +70,11 @@ const AdminDashboard: React.FC = () => {
   // Load features from API
   useEffect(() => {
     loadFeatures();
+    loadSubscriptions();
     loadTrustedLinks();
     loadSuspiciousRecent();
     loadSuspiciousPhishing();
+    loadTenants();
   }, []);
 
   const loadTrustedLinks = async () => {
@@ -121,6 +103,26 @@ const AdminDashboard: React.FC = () => {
       setTrustedLinks([]);
     } finally {
       setLoadingTrustedLinks(false);
+    }
+  };
+
+  const loadTenants = async () => {
+    setLoadingTenants(true);
+    try {
+      const res = await TenantService.getAllTenants();
+      if (res.success && res.data) {
+        const tenantsData = Array.isArray(res.data) ? res.data : [res.data];
+        setTenants(tenantsData);
+      } else {
+        toast.error(res.message || 'Không lấy được danh sách tenants');
+        setTenants([]);
+      }
+    } catch (err) {
+      console.error('Load tenants error', err);
+      toast.error('Lỗi khi tải tenants');
+      setTenants([]);
+    } finally {
+      setLoadingTenants(false);
     }
   };
 
@@ -220,6 +222,25 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const loadSubscriptions = async () => {
+    setLoadingSubscriptions(true);
+    try {
+      const response = await SubscriptionService.getAllSubscriptions();
+      if (response.success && response.data) {
+        const subsData = Array.isArray(response.data) ? response.data : [response.data];
+        setSubscriptions(subsData);
+      } else {
+        toast.error(response.message || 'Không lấy được danh sách subscriptions');
+        setSubscriptions([]);
+      }
+    } catch (error) {
+      toast.error('Lỗi khi tải danh sách subscriptions');
+      setSubscriptions([]);
+    } finally {
+      setLoadingSubscriptions(false);
+    }
+  };
+
   const handleDeleteFeature = async (id: number) => {
     try {
       const response = await FeatureService.deleteFeature(id);
@@ -240,12 +261,42 @@ const AdminDashboard: React.FC = () => {
       return;
     }
 
+    // Comment: API không có endpoint delete cho subscription
+    // if (type === 'subscription') {
+    //   handleCancelSubscription(id);
+    //   return;
+    // }
+
     if (type === 'trustedLink') {
       handleDeleteTrustedLink(id);
       return;
     }
+
+    if (type === 'tenant') {
+      handleDeleteTenant(id);
+      return;
+    }
     // Các type khác sẽ được implement sau
   };
+
+  // Comment: API không có endpoint delete subscription, chỉ có thể update status
+  // const handleCancelSubscription = async (subscriptionId: number) => {
+  //   if (!window.confirm('Bạn có chắc chắn muốn hủy subscription này?')) return;
+  //   
+  //   try {
+  //     const response = await SubscriptionService.updateSubscriptionStatus(subscriptionId, {
+  //       status: 'Cancelled'
+  //     });
+  //     if (response.success) {
+  //       toast.success(response.message || 'Hủy subscription thành công');
+  //       loadSubscriptions();
+  //     } else {
+  //       toast.error(response.message || 'Hủy subscription thất bại');
+  //     }
+  //   } catch (error) {
+  //     toast.error('Lỗi khi hủy subscription');
+  //   }
+  // };
 
   const handleDeleteTrustedLink = async (linkId: number) => {
     try {
@@ -262,6 +313,21 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteTenant = async (tenantId: number) => {
+    try {
+      const res = await TenantService.deleteTenant(tenantId);
+      if (res.success) {
+        toast.success(res.message || 'Xóa tenant thành công');
+        await loadTenants();
+      } else {
+        toast.error(res.message || 'Xóa tenant thất bại');
+      }
+    } catch (err) {
+      console.error('Delete tenant error', err);
+      toast.error('Lỗi khi xóa tenant');
+    }
+  };
+
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
   };
@@ -275,9 +341,11 @@ const AdminDashboard: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedItem(null);
-    // Reload features after dialog closes (in case of add/edit)
+    // Reload data after dialog closes (in case of add/edit)
     if (currentTab === 0) {
       loadFeatures();
+    } else if (currentTab === 1) {
+      loadSubscriptions();
     }
   };
 
@@ -328,16 +396,22 @@ const AdminDashboard: React.FC = () => {
               )}
             </TabPanel>
             <TabPanel value={currentTab} index={1}>
-              <AdminContent
-                currentTab={1}
-                onOpenDialog={handleOpenDialog}
-                features={features}
-                subscriptions={subscriptions}
-                suspiciousLinks={suspiciousLinks}
-                trustedLinks={trustedLinks}
-                tenants={tenants}
-                onDelete={handleDelete}
-              />
+              {loadingSubscriptions ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <AdminContent
+                  currentTab={1}
+                  onOpenDialog={handleOpenDialog}
+                  features={features}
+                  subscriptions={subscriptions}
+                  suspiciousLinks={suspiciousLinks}
+                  trustedLinks={trustedLinks}
+                  tenants={tenants}
+                  onDelete={handleDelete}
+                />
+              )}
             </TabPanel>
             <TabPanel value={currentTab} index={2}>
               <AdminContent
@@ -396,7 +470,9 @@ const AdminDashboard: React.FC = () => {
             onRefresh={() => {
               // gọi loader phù hợp theo tab hiện tại
               if (currentTab === 0) return loadFeatures();
+              if (currentTab === 1) return loadSubscriptions();
               if (currentTab === 3) return loadTrustedLinks();
+              if (currentTab === 4) return loadTenants();
               // thêm các loader khác nếu có
               return Promise.resolve();
             }}

@@ -17,6 +17,8 @@ import {
 import { toast } from 'react-toastify';
 import FeatureService from '../../app/services/FeatureService';
 import TrustedLinkService from '../../app/services/TrustedLinkService';
+import SubscriptionService from '../../app/services/SubscriptionService';
+import TenantService from '../../app/services/TenantService';
 
 interface AdminDialogProps {
   open: boolean;
@@ -44,6 +46,15 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
     category: '',
     source: '',
     status: 'Active',
+    // subscription fields
+    planId: '',
+    userId: '',
+    autoRenew: true,
+    endDate: '',
+    // tenant fields
+    companyName: '',
+    contactPhone: '',
+    address: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -57,6 +68,15 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
         category: selectedItem.category || '',
         source: selectedItem.source || selectedItem.addedBy || '',
         status: selectedItem.status || 'Active',
+        // subscription fields
+        planId: selectedItem.planId || '',
+        userId: selectedItem.userId || '',
+        autoRenew: selectedItem.autoRenew ?? true,
+        endDate: selectedItem.endDate ? selectedItem.endDate.split('T')[0] : '',
+        // tenant fields
+        companyName: selectedItem.companyName || '',
+        contactPhone: selectedItem.contactPhone || '',
+        address: selectedItem.address || '',
       });
     } else {
       setFormData({
@@ -67,12 +87,22 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
         category: '',
         source: '',
         status: 'Active',
+        planId: '',
+        userId: '',
+        autoRenew: true,
+        endDate: '',
+        companyName: '',
+        contactPhone: '',
+        address: '',
       });
     }
   }, [selectedItem, dialogType, open]);
 
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev: any) => ({ ...prev, [field]: value }));
+  const handleChange = (field: string, value: string | boolean) => {
+    setFormData((prev: any) => ({ 
+      ...prev, 
+      [field]: field === 'autoRenew' ? value === 'true' : value 
+    }));
   };
 
   const handleSubmit = async () => {
@@ -84,9 +114,23 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
       }
     }
 
+    if (currentTab === 1) {
+      if (dialogType === 'add' && !formData.planId) {
+        toast.error('Vui lòng chọn Plan ID');
+        return;
+      }
+    }
+
     if (currentTab === 3) {
       if (!formData.domain?.trim() || !formData.url?.trim()) {
         toast.error('Vui lòng điền domain và url cho trusted link');
+        return;
+      }
+    }
+
+    if (currentTab === 4) {
+      if (!formData.companyName?.trim() || !formData.domain?.trim()) {
+        toast.error('Vui lòng điền tên công ty và domain cho tenant');
         return;
       }
     }
@@ -110,6 +154,27 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
         }
       }
 
+      // Subscriptions tab
+      if (currentTab === 1) {
+        if (dialogType === 'add') {
+          response = await SubscriptionService.createSubscription({
+            planId: Number(formData.planId),
+            userId: formData.userId?.trim() || undefined,
+          });
+        } else if (dialogType === 'edit' && selectedItem) {
+          // Backend chỉ cho phép update status
+          if (!formData.status) {
+            toast.error('Vui lòng chọn status');
+            return;
+          }
+          
+          response = await SubscriptionService.updateSubscriptionStatus(
+            (selectedItem as any).subscriptionId,
+            { status: formData.status }
+          );
+        }
+      }
+
       // Trusted Links tab
       if (currentTab === 3) {
         const payload = {
@@ -125,6 +190,28 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
         } else if (dialogType === 'edit' && selectedItem) {
           const id = (selectedItem as any).linkId ?? (selectedItem as any).id;
           response = await TrustedLinkService.updateTrustedLink(Number(id), payload);
+        }
+      }
+
+      // Tenants tab
+      if (currentTab === 4) {
+        if (dialogType === 'add') {
+          const createPayload = {
+            companyName: formData.companyName.trim(),
+            domain: formData.domain.trim(),
+            contactPhone: formData.contactPhone?.trim() || undefined,
+            address: formData.address?.trim() || undefined,
+          };
+          response = await TenantService.createTenant(createPayload);
+        } else if (dialogType === 'edit' && selectedItem) {
+          const updatePayload = {
+            companyName: formData.companyName.trim(),
+            domain: formData.domain.trim(),
+            contactPhone: formData.contactPhone?.trim() || undefined,
+            address: formData.address?.trim() || undefined,
+            status: formData.status || 'Active',
+          };
+          response = await TenantService.updateTenant((selectedItem as any).tenantId, updatePayload);
         }
       }
 
@@ -166,6 +253,121 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
         disabled={dialogType === 'view' || loading}
         required
       />
+    </Box>
+  );
+
+  const renderSubscriptionForm = () => (
+    <Box sx={{ pt: 2 }}>
+      {dialogType === 'add' ? (
+        <>
+          <FormControl fullWidth sx={{ mb: 2 }} required>
+            <InputLabel id="plan-id-label">Plan ID</InputLabel>
+            <Select
+              labelId="plan-id-label"
+              label="Plan ID"
+              value={formData.planId}
+              onChange={(e) => handleChange('planId', String(e.target.value))}
+              disabled={loading}
+            >
+              <MenuItem value={1}>Plan 1 - Basic ($28)</MenuItem>
+              <MenuItem value={2}>Plan 2 - Plus ($35)</MenuItem>
+              <MenuItem value={3}>Plan 3 - Premium ($49)</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            fullWidth
+            label="User ID (Optional)"
+            variant="outlined"
+            value={formData.userId}
+            onChange={(e) => handleChange('userId', e.target.value)}
+            sx={{ mb: 2 }}
+            disabled={loading}
+            helperText="Để trống nếu tạo cho user hiện tại"
+          />
+        </>
+      ) : (
+        <>
+          <TextField
+            fullWidth
+            label="Subscription ID"
+            variant="outlined"
+            value={selectedItem?.subscriptionId || ''}
+            sx={{ mb: 2 }}
+            disabled
+          />
+          <TextField
+            fullWidth
+            label="Plan ID"
+            variant="outlined"
+            value={selectedItem?.planId || ''}
+            sx={{ mb: 2 }}
+            disabled
+          />
+          <TextField
+            fullWidth
+            label="User ID"
+            variant="outlined"
+            value={selectedItem?.userId || ''}
+            sx={{ mb: 2 }}
+            disabled
+          />
+          <TextField
+            fullWidth
+            label="Start Date"
+            variant="outlined"
+            value={selectedItem?.startDate ? new Date(selectedItem.startDate).toLocaleDateString() : ''}
+            sx={{ mb: 2 }}
+            disabled
+          />
+          <TextField
+            fullWidth
+            label="End Date"
+            variant="outlined"
+            value={selectedItem?.endDate ? new Date(selectedItem.endDate).toLocaleDateString() : ''}
+            sx={{ mb: 2 }}
+            disabled
+          />
+          <TextField
+            fullWidth
+            label="Auto Renew"
+            variant="outlined"
+            value={selectedItem?.autoRenew ? 'Yes' : 'No'}
+            sx={{ mb: 2 }}
+            disabled
+          />
+          <FormControl fullWidth sx={{ mb: 2 }} required>
+            <InputLabel id="sub-status-label">Status *</InputLabel>
+            <Select
+              labelId="sub-status-label"
+              label="Status *"
+              value={formData.status}
+              onChange={(e) => handleChange('status', String(e.target.value))}
+              disabled={dialogType === 'view' || loading}
+            >
+              <MenuItem 
+                value="Active"
+                disabled={!selectedItem?.payment || selectedItem?.payment?.status !== 'completed'}
+              >
+                Active {!selectedItem?.payment || selectedItem?.payment?.status !== 'completed' ? '(Requires successful payment)' : ''}
+              </MenuItem>
+              <MenuItem value="Cancelled">Cancelled</MenuItem>
+              <MenuItem value="Expired">Expired</MenuItem>
+              <MenuItem value="Pending">Pending</MenuItem>
+            </Select>
+          </FormControl>
+          {selectedItem?.payment && (
+            <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                Payment Information
+              </Typography>
+              <Typography variant="body2">Amount: ${selectedItem.payment.amount}</Typography>
+              <Typography variant="body2">Method: {selectedItem.payment.paymentMethod}</Typography>
+              <Typography variant="body2">Status: {selectedItem.payment.status}</Typography>
+              <Typography variant="body2">Transaction ID: {selectedItem.payment.transactionId}</Typography>
+            </Box>
+          )}
+        </>
+      )}
     </Box>
   );
 
@@ -231,16 +433,97 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
     </Box>
   );
 
+  const renderTenantForm = () => (
+    <Box sx={{ pt: 2 }}>
+      <TextField
+        label="Company Name"
+        fullWidth
+        value={formData.companyName}
+        onChange={(e) => handleChange('companyName', e.target.value)}
+        sx={{ mb: 2 }}
+        disabled={dialogType === 'view' || loading}
+        required
+        helperText="Tên công ty hoặc tổ chức"
+      />
+      <TextField
+        label="Domain"
+        fullWidth
+        value={formData.domain}
+        onChange={(e) => handleChange('domain', e.target.value)}
+        sx={{ mb: 2 }}
+        disabled={dialogType === 'view' || loading}
+        required
+        helperText="Ví dụ: company.com"
+      />
+      <TextField
+        label="Contact Phone"
+        fullWidth
+        value={formData.contactPhone}
+        onChange={(e) => handleChange('contactPhone', e.target.value)}
+        sx={{ mb: 2 }}
+        disabled={dialogType === 'view' || loading}
+        helperText="Số điện thoại liên hệ"
+      />
+      <TextField
+        label="Address"
+        fullWidth
+        value={formData.address}
+        onChange={(e) => handleChange('address', e.target.value)}
+        sx={{ mb: 2 }}
+        disabled={dialogType === 'view' || loading}
+        multiline
+        rows={2}
+        helperText="Địa chỉ công ty"
+      />
+
+      {dialogType === 'edit' && (
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel id="tenant-status-label">Status</InputLabel>
+          <Select
+            labelId="tenant-status-label"
+            label="Status"
+            value={formData.status}
+            onChange={(e) => handleChange('status', String(e.target.value))}
+            disabled={loading}
+          >
+            <MenuItem value="Active">Active</MenuItem>
+            <MenuItem value="Inactive">Inactive</MenuItem>
+          </Select>
+        </FormControl>
+      )}
+
+      {dialogType === 'view' && selectedItem && (
+        <TextField
+          label="Status"
+          fullWidth
+          value={selectedItem.status || ''}
+          sx={{ mb: 2 }}
+          disabled
+        />
+      )}
+    </Box>
+  );
+
   const getTitle = () => {
     if (currentTab === 0) {
       if (dialogType === 'add') return 'Add New Feature';
       if (dialogType === 'edit') return 'Edit Feature';
       if (dialogType === 'view') return 'View Feature Details';
     }
+    if (currentTab === 1) {
+      if (dialogType === 'add') return 'Create New Subscription';
+      if (dialogType === 'edit') return 'Edit Subscription';
+      if (dialogType === 'view') return 'View Subscription Details';
+    }
     if (currentTab === 3) {
       if (dialogType === 'add') return 'Add Trusted Link';
       if (dialogType === 'edit') return 'Edit Trusted Link';
       if (dialogType === 'view') return 'View Trusted Link';
+    }
+    if (currentTab === 4) {
+      if (dialogType === 'add') return 'Add New Tenant';
+      if (dialogType === 'edit') return 'Edit Tenant';
+      if (dialogType === 'view') return 'View Tenant Details';
     }
     return 'Item Details';
   };
@@ -255,11 +538,13 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
       <DialogTitle>{getTitle()}</DialogTitle>
       <DialogContent>
         {currentTab === 0 && renderFeatureForm()}
+        {currentTab === 1 && renderSubscriptionForm()}
         {currentTab === 3 && renderTrustedLinkForm()}
-        {currentTab !== 0 && currentTab !== 3 && (
+        {currentTab === 4 && renderTenantForm()}
+        {currentTab !== 0 && currentTab !== 1 && currentTab !== 3 && currentTab !== 4 && (
           <Box sx={{ pt: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              Form cho tab này sẽ được implement sau.
+              Form chưa được triển khai cho tab này.
             </Typography>
           </Box>
         )}

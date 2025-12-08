@@ -9,16 +9,15 @@ export interface Package {
 }
 
 export interface Payment {
+  paymentId: number;
   subscriptionId: number;
   amount: number;
+  paymentDate: string;
   paymentMethod: string;
+  transactionId: string;
   status: string;
-  transactionId: string; // ✅ Thêm dòng này
-  createdAt?: string;
-  orderId?: string;
-  userId?: string;
-  userEmail?: string;
-  packageName?: string;
+  frontendReturnUrl?: string;
+  subscription?: any; // Subscription object nếu cần
 }
 
 export interface PaymentResponse {
