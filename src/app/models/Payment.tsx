@@ -8,16 +8,45 @@ export interface Package {
   subscriptionId?: number; // <-- thêm trường này
 }
 
+export interface User {
+  id: string;
+  userName?: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  tenantId?: number;
+  createdAt?: string;
+  status?: string;
+}
+
+export interface Subscription {
+  subscriptionId: number;
+  tenantId?: number;
+  userId: string;
+  planId?: number;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  autoRenew?: boolean;
+  user?: User;
+  plan?: any;
+  tenant?: any;
+}
+
 export interface Payment {
   paymentId: number;
   subscriptionId: number;
   amount: number;
   paymentDate: string;
-  paymentMethod: string;
+  paymentMethod?: string;
   transactionId: string;
   status: string;
+  userId?: string;
+  userEmail?: string;
+  fullName?: string;
   frontendReturnUrl?: string;
-  subscription?: any; // Subscription object nếu cần
+  subscription?: Subscription;
 }
 
 export interface PaymentResponse {
