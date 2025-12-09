@@ -61,8 +61,8 @@ const AdminPaymentManagement: React.FC = () => {
         // Sort by paymentId ascending
         paymentsData.sort((a, b) => a.paymentId - b.paymentId);
         
-        // Filter out test emails (admin, customer, manager, employee)
-        const testKeywords = ['admin', 'customer', 'manager', 'employee'];
+        // Filter out test emails (admin, customer, manager, employee, phamdanh)
+        const testKeywords = ['admin', 'customer', 'manager', 'employee', 'phamdanh'];
         paymentsData = paymentsData.filter((p: Payment) => {
           const email = p.userEmail?.toLowerCase() || '';
           return !testKeywords.some(keyword => email.includes(keyword));
