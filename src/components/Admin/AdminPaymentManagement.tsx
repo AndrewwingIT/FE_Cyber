@@ -212,10 +212,9 @@ const AdminPaymentManagement: React.FC = () => {
           <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
             <TableRow>
               <TableCell><strong>Payment ID</strong></TableCell>
-              <TableCell><strong>Transaction ID</strong></TableCell>
-              <TableCell><strong>Subscription ID</strong></TableCell>
+              <TableCell><strong>Full Name</strong></TableCell>
+              <TableCell><strong>User Email</strong></TableCell>
               <TableCell><strong>Amount</strong></TableCell>
-              <TableCell><strong>Method</strong></TableCell>
               <TableCell><strong>Status</strong></TableCell>
               <TableCell><strong>Payment Date</strong></TableCell>
               <TableCell align="center"><strong>Actions</strong></TableCell>
@@ -224,7 +223,7 @@ const AdminPaymentManagement: React.FC = () => {
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                   <Typography color="textSecondary">No payments available</Typography>
                 </TableCell>
               </TableRow>
@@ -235,15 +234,18 @@ const AdminPaymentManagement: React.FC = () => {
                 <TableRow key={payment.paymentId} hover>
                   <TableCell>{payment.paymentId}</TableCell>
                   <TableCell>
-                    <Typography variant="body2" sx={{ fontSize: '12px', fontFamily: 'monospace' }}>
-                      {payment.transactionId || '-'}
+                    <Typography variant="body2">
+                      {payment.fullName || '-'}
                     </Typography>
                   </TableCell>
-                  <TableCell>{payment.subscriptionId}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontSize: '13px' }}>
+                      {payment.userEmail || '-'}
+                    </Typography>
+                  </TableCell>
                   <TableCell>
                     <Chip label={`${payment.amount.toLocaleString('vi-VN')} VND`} size="small" color="primary" variant="outlined" />
                   </TableCell>
-                  <TableCell>{payment.paymentMethod || '-'}</TableCell>
                   <TableCell>
                     <Chip
                       label={getStatusLabel(payment.status)}
@@ -293,16 +295,13 @@ const AdminPaymentManagement: React.FC = () => {
                 <strong>Payment ID:</strong> {selectedPayment.paymentId}
               </Typography>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Transaction ID:</strong> {selectedPayment.transactionId || '-'}
+                <strong>Full Name:</strong> {selectedPayment.fullName || '-'}
               </Typography>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Subscription ID:</strong> {selectedPayment.subscriptionId}
+                <strong>User Email:</strong> {selectedPayment.userEmail || '-'}
               </Typography>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
                 <strong>Amount:</strong> {selectedPayment.amount.toLocaleString('vi-VN')} VND
-              </Typography>
-              <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Method:</strong> {selectedPayment.paymentMethod || '-'}
               </Typography>
 
               <TextField
