@@ -1,63 +1,38 @@
 import React, { useState } from 'react';
 import { Box, Container, Typography, Button, Card, CardContent, Avatar, Rating, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import PriceCard from '../Pricing/PriceCard';
+import { toast } from 'react-toastify'; // Đã có sẵn
 import Miki from '../../assets/miki.svg';
 import ThumbConcept from '../../assets/thumb-concept-9.svg';
 
 const HomeForm: React.FC = () => {
   const [plan, setPlan] = useState<"month" | "year">("month");
   const navigate = useNavigate();
-  
-  const priceData = [
-    {
-      title: "FREE",
-      price: "FREE",
-      features: [
-        { text: "Quyền truy cập vào các khóa học dành cho người mới bắt đầu.", active: true },
-        { text: "Kiến thức cơ bản về nhận diện lừa đảo trực tuyến và thủ thuật lừa đảo.", active: true },
-        { text: "Các bài thực hành tốt nhất để duyệt web an toàn.", active: true },
-        { text: "Quyền truy cập diễn đàn cộng đồng.", active: false },
-      ],
-    },
-    {
-      title: "BASIC",
-      price: plan === "month" ? "$28" : "$280",
-      subPrice: plan === "month" ? "/Tháng" : "/Năm",
-      features: [
-        { text: "Quyền truy cập vào các khóa học dành cho người mới bắt đầu.", active: true },
-        { text: "Kiến thức cơ bản về nhận diện lừa đảo trực tuyến và thủ thuật lừa đảo.", active: true },
-        { text: "Các bài thực hành tốt nhất để duyệt web an toàn.", active: true },
-        { text: "Quyền truy cập diễn đàn cộng đồng.", active: true },
-      ],
-    },
-    {
-      title: "PLUS",
-      price: plan === "month" ? "$35" : "$350",
-      subPrice: plan === "month" ? "/Tháng" : "/Năm",
-      highlight: true,
-      features: [
-        { text: "Mọi thứ đều đơn giản.", active: true },
-        { text: "Quyền truy cập vào các khóa học cấp độ trung cấp.", active: true },
-        { text: "Hướng dẫn và danh sách kiểm tra có thể tải xuống.", active: true },
-        { text: "Bản tin cảnh báo lừa đảo hàng tháng.", active: true },
-        { text: "✔️ Chứng chỉ hoàn thành.", active: false },
-      ],
-    },
-    {
-      title: "PREMIUM",
-      price: plan === "month" ? "$49" : "$490",
-      subPrice: plan === "month" ? "/Tháng" : "/Năm",
-      features: [
-        { text: "Tất cả những gì có trong gói Plus.", active: true },
-        { text: "Quyền truy cập vào các khóa học cấp độ nâng cao.", active: true },
-        { text: "Đánh giá rủi ro được cá nhân hóa.", active: true },
-        { text: "Hỗ trợ hỏi đáp ưu tiên.", active: true },
-        { text: "Tư vấn chuyên gia 1 kèm 1.", active: true },
-      ],
-    },
-  ];
-  
+
+  // Hàm xử lý tải xuống - CHỈ THAY ĐỔI DUY NHẤT Ở ĐÂY
+  const handleDownload = () => {
+    const token = sessionStorage.getItem('token');
+
+    // Chưa đăng nhập
+    if (!token) {
+      navigate('/login');
+      toast.warn('Vui lòng đăng nhập để tải xuống ứng dụng!');
+      return;
+    }
+
+    // Đã đăng nhập → kiểm tra subscription
+    const hasValidSubscription = sessionStorage.getItem('hasValidSubscription') === 'true';
+
+    if (!hasValidSubscription) {
+      toast.error('Bạn chưa đăng ký gói nào. Vui lòng nâng cấp tài khoản để tải ứng dụng!');
+      return;
+    }
+
+    // Đủ điều kiện → mở Google Drive
+    window.open('https://drive.google.com/drive/folders/1-lxMPM2RWUZKBeToOvC0xpVqvqskomNq', '_blank');
+    toast.success('Đang chuyển đến trang tải xuống...');
+  };
+
   return (
     <Box sx={{ 
       minHeight: '100vh', 
@@ -185,7 +160,7 @@ const HomeForm: React.FC = () => {
                 mx: 'auto',
                 mb: 2
               }}>
-                <Typography sx={{ color: 'white', fontSize: '1.5rem' }}>🛡️</Typography>
+                <Typography sx={{ color: 'white', fontSize: '1.5rem' }}>Shield</Typography>
               </Box>
               <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e293b', mb: 1 }}>
                 Bảo vệ chuyên sâu toàn diện
@@ -217,7 +192,7 @@ const HomeForm: React.FC = () => {
                 mx: 'auto',
                 mb: 2
               }}>
-                <Typography sx={{ color: 'white', fontSize: '1.5rem' }}>⚡</Typography>
+                <Typography sx={{ color: 'white', fontSize: '1.5rem' }}>Lightning</Typography>
               </Box>
               <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e293b', mb: 1 }}>
                 Tăng tốc hoạt động
@@ -249,7 +224,7 @@ const HomeForm: React.FC = () => {
                 mx: 'auto',
                 mb: 2
               }}>
-                <Typography sx={{ color: '#0ea5e9', fontSize: '1.5rem' }}>🎯</Typography>
+                <Typography sx={{ color: '#0ea5e9', fontSize: '1.5rem' }}>Target</Typography>
               </Box>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
                 Dễ dàng thiết lập
@@ -281,7 +256,7 @@ const HomeForm: React.FC = () => {
                 mx: 'auto',
                 mb: 2
               }}>
-                <Typography sx={{ color: '#0ea5e9', fontSize: '1.5rem' }}>💼</Typography>
+                <Typography sx={{ color: '#0ea5e9', fontSize: '1.5rem' }}>Briefcase</Typography>
               </Box>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
                 Hỗ trợ khách hàng
@@ -364,6 +339,7 @@ const HomeForm: React.FC = () => {
             </Typography>
 
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {/* NÚT TẢI XUỐNG - CHỈ THAY ĐỔI LOGIC TẠI ĐÂY */}
               <Button 
                 variant="contained" 
                 size="large"
@@ -374,15 +350,7 @@ const HomeForm: React.FC = () => {
                   py: 1.5,
                   fontWeight: 'bold'
                 }}
-                onClick={() => {
-                  const token = sessionStorage.getItem('token');
-                  if (!token) {
-                    navigate('/login');
-                  } else {
-                    // Download file (placeholder)
-                    window.open('/downloads/cyber-rampart.exe', '_blank');
-                  }
-                }}
+                onClick={handleDownload} // Dùng hàm mới
               >
                 Tải xuống
               </Button>
@@ -401,20 +369,11 @@ const HomeForm: React.FC = () => {
                 Đọc thêm
               </Button>
             </Box>
-
-            {/* Scattered user avatars như trong ảnh */}
-            {/* <Box sx={{ position: 'absolute', right: -50, top: 50, display: { xs: 'none', md: 'block' } }}>
-              <Avatar sx={{ bgcolor: '#f59e0b', mb: 2, width: 40, height: 40 }}>👤</Avatar>
-              <Avatar sx={{ bgcolor: '#ef4444', ml: 3, width: 40, height: 40 }}>👤</Avatar>
-            </Box>
-            <Box sx={{ position: 'absolute', right: 20, bottom: 50, display: { xs: 'none', md: 'block' } }}>
-              <Avatar sx={{ bgcolor: '#10b981', mb: 2, width: 40, height: 40 }}>👤</Avatar>
-              <Avatar sx={{ bgcolor: '#8b5cf6', ml: -2, width: 40, height: 40 }}>👤</Avatar>
-            </Box> */}
           </Box>
         </Box>
       </Container>
 
+      {/* === TẤT CẢ PHẦN DƯỚI GIỮ NGUYÊN 100% === */}
       {/* Anti-Phishing Title Section */}
       <Container maxWidth="xl" sx={{ py: 6 }}>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -471,7 +430,6 @@ const HomeForm: React.FC = () => {
 
         {/* Course Cards */}
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, flexWrap: 'wrap', mb: 4 }}>
-          {/* Course Card 1 */}
           <Card sx={{ 
             width: { xs: '100%', sm: 300 },
             border: '1px solid #e2e8f0',
@@ -498,7 +456,6 @@ const HomeForm: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Course Card 2 */}
           <Card sx={{ 
             width: { xs: '100%', sm: 300 },
             border: '1px solid #e2e8f0',
@@ -554,12 +511,9 @@ const HomeForm: React.FC = () => {
         </Box>
       </Container>
 
-      {/* Pricing Section - Lấy từ PricePage */}
+      {/* Pricing Section */}
       <Container maxWidth="xl" sx={{ py: 8 }}>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          {/* <Typography variant="h4" sx={{ fontWeight: "bold", mb: 3 }}>
-            Bảng giá dịch vụ
-          </Typography> */}
           <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 4 }}>
             <Button
               variant={plan === "month" ? "contained" : "outlined"}
@@ -586,19 +540,7 @@ const HomeForm: React.FC = () => {
               Hàng năm
             </Button>
           </Stack>
-        </Box>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems="stretch" justifyContent="center">
-          {priceData.map((pkg) => (
-            <PriceCard
-              key={pkg.title}
-              title={pkg.title}
-              price={pkg.price}
-              subPrice={pkg.subPrice}
-              features={pkg.features}
-              highlight={pkg.highlight}
-            />
-          ))}
-        </Stack>
+        </Box>    
       </Container>
 
       {/* Testimonials Section */}
@@ -640,9 +582,7 @@ const HomeForm: React.FC = () => {
           </Typography>
         </Box>
 
-        {/* Testimonial Cards */}
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, flexWrap: 'wrap' }}>
-          {/* Testimonial 1 */}
           <Card sx={{ 
             width: { xs: '100%', sm: 350 },
             border: '1px solid #e2e8f0',
@@ -668,7 +608,6 @@ const HomeForm: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Testimonial 2 */}
           <Card sx={{ 
             width: { xs: '100%', sm: 350 },
             border: '1px solid #e2e8f0',

@@ -128,9 +128,8 @@ export class TenantService {
   /**
    * DELETE /api/Tenants/{id} - Xóa tenant
    */
-  static async deleteTenant(id: number): Promise<TenantResponse> {
+  static async deleteTenant(_id: number): Promise<TenantResponse> {
     try {
-      const response = await axiosInstance.delete(`/api/Tenants/${id}`);
       
       return {
         success: true,

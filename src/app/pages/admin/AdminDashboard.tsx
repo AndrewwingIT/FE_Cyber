@@ -10,6 +10,8 @@ import AdminPaymentManagement from '../../../components/Admin/AdminPaymentManage
 import FeatureService from '../../../app/services/FeatureService';
 import type { Feature } from '../../../app/services/FeatureService';
 import TrustedLinkService from '../../../app/services/TrustedLinkService';
+import SuspiciousLinkService from '../../../app/services/SuspiciousLinkService';
+import type { RecentSuspicious, PhishingSuspicious } from '../../../app/services/SuspiciousLinkService';
 import SubscriptionService from '../../../app/services/SubscriptionService';
 import type { Subscription } from '../../../app/models/Subscription';
 import TenantService from '../../../app/services/TenantService';
@@ -54,16 +56,24 @@ const AdminDashboard: React.FC = () => {
   ]);
 
   const [trustedLinks, setTrustedLinks] = useState<TrustedLink[]>([]);
-  const [loadingTrustedLinks, setLoadingTrustedLinks] = useState(false);
+  const [, setLoadingTrustedLinks] = useState(false);
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [loadingTenants, setLoadingTenants] = useState(false);
+  const [, setLoadingTenants] = useState(false);
+
+  // Suspicious lists from API
+  const [suspiciousRecent, setSuspiciousRecent] = useState<RecentSuspicious[]>([]);
+  const [loadingSuspiciousRecent, setLoadingSuspiciousRecent] = useState(false);
+  const [suspiciousPhishing, setSuspiciousPhishing] = useState<PhishingSuspicious[]>([]);
+  const [loadingSuspiciousPhishing, setLoadingSuspiciousPhishing] = useState(false);
 
   // Load features from API
   useEffect(() => {
     loadFeatures();
     loadSubscriptions();
     loadTrustedLinks();
+    loadSuspiciousRecent();
+    loadSuspiciousPhishing();
     loadTenants();
   }, []);
 
@@ -132,6 +142,83 @@ const AdminDashboard: React.FC = () => {
       setFeatures([]);
     } finally {
       setLoadingFeatures(false);
+    }
+  };
+
+  const loadSuspiciousRecent = async () => {
+    setLoadingSuspiciousRecent(true);
+    try {
+      const res = await SuspiciousLinkService.getRecent(100);
+      if (res.success && res.data) setSuspiciousRecent(res.data as RecentSuspicious[]);
+      else setSuspiciousRecent([]);
+    } catch (err) {
+      console.error(err);
+      setSuspiciousRecent([]);
+    } finally {
+      setLoadingSuspiciousRecent(false);
+    }
+  };
+
+  const loadSuspiciousPhishing = async () => {
+    setLoadingSuspiciousPhishing(true);
+    try {
+      const res = await SuspiciousLinkService.getPhishingList();
+      if (res.success && res.data) setSuspiciousPhishing(res.data as PhishingSuspicious[]);
+      else setSuspiciousPhishing([]);
+    } catch (err) {
+      console.error(err);
+      setSuspiciousPhishing([]);
+    } finally {
+      setLoadingSuspiciousPhishing(false);
+    }
+  };
+
+  // promote recent -> create phishing (api 5)
+  const handlePromoteToPhishing = async (url: string) => {
+    try {
+      const res = await SuspiciousLinkService.createPhishingFromUrl({ url });
+      if (res.success) {
+        toast.success(res.message || 'Đã mark thành phishing');
+        await loadSuspiciousRecent();
+        await loadSuspiciousPhishing();
+      } else {
+        toast.error(res.message || 'Không thể chuyển sang phishing');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi khi chuyển sang phishing');
+    }
+  };
+
+  // update phishing status (Active <-> Inactive) (api 6)
+  const handleUpdatePhishingStatus = async (suspiciousId: number, status: string) => {
+    try {
+      const res = await SuspiciousLinkService.updatePhishingStatus(suspiciousId, status);
+      if (res.success) {
+        toast.success(res.message || 'Cập nhật trạng thái thành công');
+        await loadSuspiciousPhishing();
+      } else {
+        toast.error(res.message || 'Cập nhật trạng thái thất bại');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi khi cập nhật trạng thái');
+    }
+  };
+
+  // report link (api 1)
+  const handleReportLink = async (payload: { url: string; pageTitle?: string; reason?: string }) => {
+    try {
+      const res = await SuspiciousLinkService.reportLink(payload);
+      if (res.success) {
+        toast.success(res.message || 'Báo cáo thành công');
+        await loadSuspiciousRecent();
+      } else {
+        toast.error(res.message || 'Báo cáo thất bại');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi khi báo cáo link');
     }
   };
 
@@ -332,10 +419,16 @@ const AdminDashboard: React.FC = () => {
                 onOpenDialog={handleOpenDialog}
                 features={features}
                 subscriptions={subscriptions}
-                suspiciousLinks={suspiciousLinks}
-                trustedLinks={trustedLinks}
+                suspiciousRecent={suspiciousRecent}
+                suspiciousPhishing={suspiciousPhishing}
                 tenants={tenants}
+                trustedLinks={trustedLinks}
                 onDelete={handleDelete}
+                onPromoteToPhishing={handlePromoteToPhishing}
+                onUpdatePhishingStatus={handleUpdatePhishingStatus}
+                onReportLink={handleReportLink}
+                loadingSuspiciousRecent={loadingSuspiciousRecent}
+                loadingSuspiciousPhishing={loadingSuspiciousPhishing}
               />
             </TabPanel>
             <TabPanel value={currentTab} index={3}>
