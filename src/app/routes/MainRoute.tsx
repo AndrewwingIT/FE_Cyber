@@ -8,6 +8,7 @@ import LoginPage from '../pages/login/LoginPage';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import PrivateRoute from './PrivateRoute';
 import RootLayout from '../../components/Layout/RootLayout';
+import Profile from '../pages/Profile';
 
 // Lazy load components để tránh lỗi undefined
 const router = createBrowserRouter([
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
       { path: '/price', element: <PricePage /> },
+      { path: '/profile', element: <Profile /> },
       {
         path: '/admin',
         element: <PrivateRoute requiredRole="Admin" />,

@@ -484,7 +484,7 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
             label="Status"
             value={formData.status}
             onChange={(e) => handleChange('status', String(e.target.value))}
-            disabled={dialogType === 'view' || loading}
+            disabled={loading}
           >
             <MenuItem value="Active">Active</MenuItem>
             <MenuItem value="Inactive">Inactive</MenuItem>
@@ -493,29 +493,13 @@ const AdminDialog: React.FC<AdminDialogProps> = ({
       )}
 
       {dialogType === 'view' && selectedItem && (
-        <>
-          {/* <TextField
-            label="Tenant ID"
-            fullWidth
-            value={(selectedItem as any).tenantId || ''}
-            sx={{ mb: 2 }}
-            disabled
-          />
-          <TextField
-            label="Created At"
-            fullWidth
-            value={(selectedItem as any).createdAt ? new Date((selectedItem as any).createdAt).toLocaleString() : ''}
-            sx={{ mb: 2 }}
-            disabled
-          /> */}
-          <TextField
-            label="Status"
-            fullWidth
-            value={(selectedItem as any).status || ''}
-            sx={{ mb: 2 }}
-            disabled
-          />
-        </>
+        <TextField
+          label="Status"
+          fullWidth
+          value={selectedItem.status || ''}
+          sx={{ mb: 2 }}
+          disabled
+        />
       )}
     </Box>
   );

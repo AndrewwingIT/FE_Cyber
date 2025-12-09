@@ -14,18 +14,17 @@ import { toast } from 'react-toastify';
 
 const Header: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
+  const [, setUserEmail] = useState('');
   const [userRole, setUserRole] = useState('');
   const [userName, setUserName] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Kiểm tra token trong sessionStorage
     const token = sessionStorage.getItem('token');
     const email = sessionStorage.getItem('userEmail');
     const role = sessionStorage.getItem('userRole');
-    const name = sessionStorage.getItem('userName');
+    const name = sessionStorage.getItem('userName'); // Bây giờ là firstName + lastName
     if (token) {
       setIsAuthenticated(true);
       setUserEmail(email || 'User');
@@ -43,10 +42,7 @@ const Header: React.FC = () => {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('userEmail');
-    sessionStorage.removeItem('userRole');
-    sessionStorage.removeItem('userName');
+    sessionStorage.clear(); // Clear all để an toàn
     setIsAuthenticated(false);
     setUserEmail('');
     setUserRole('');
@@ -68,7 +64,7 @@ const Header: React.FC = () => {
         <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
           <Button color="inherit" component={RouterLink} to="/">Trang chủ</Button>
           <Button color="inherit">Khóa học</Button>
-          <Button color="inherit" component={RouterLink} to="/price">Bảng giá</Button>
+          <Button color="inherit" component={RouterLink} to="/payment">Bảng giá</Button>
           <Button color="inherit">Câu hỏi thường gặp</Button>
           <Button color="inherit">Về chúng tôi</Button>
           {!isAuthenticated && (
@@ -76,7 +72,6 @@ const Header: React.FC = () => {
           )}
         </Box>
         
-        {/* Thêm khoảng cách giữa navigation và user menu */}
         <Box sx={{ flexGrow: isAuthenticated ? 0 : 1 }} />
         
         {isAuthenticated ? (
@@ -93,7 +88,7 @@ const Header: React.FC = () => {
                 fontFamily: 'Montserrat, sans-serif'
               }}
             >
-              Welcome, {userRole === 'Admin' ? 'Admin' : 'User'}
+              Welcome, {userRole === 'Admin' ? 'Admin' : userName}
             </Typography>
             
             <IconButton
@@ -109,7 +104,7 @@ const Header: React.FC = () => {
                 height: 32, 
                 bgcolor: userRole === 'Admin' ? '#3b82f6' : '#f472b6'
               }}>
-                {userRole === 'Admin' ? 'A' : (userName || userEmail).charAt(0).toUpperCase()}
+                {userRole === 'Admin' ? 'A' : userName.charAt(0).toUpperCase()}
               </Avatar>
             </IconButton>
             
@@ -163,7 +158,10 @@ const Header: React.FC = () => {
                 </MenuItem>
               )}
               <MenuItem 
-                onClick={handleClose} 
+                onClick={() => {
+                  handleClose();
+                  navigate('/profile'); // Link đến trang Profile
+                }} 
                 sx={{ 
                   py: 1.5,
                   px: 2,

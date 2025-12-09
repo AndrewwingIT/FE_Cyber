@@ -12,403 +12,270 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Chip,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Header from '../../layouts/headers/Header';
-import { PACKAGES, type Package } from '../../models/Payment';
 import PaymentService from '../../services/PaymentService';
 import { usePayment } from '../../context/usePayment';
+import axiosInstance from '../../../config/axiosConfig';
+
+interface Plan {
+  planId: number;
+  name: string;
+  description: string;
+  price: number;
+  billingCycle: string;
+  isActive: boolean;
+  features: { featureId: number; name: string; description: string }[];
+}
 
 const PaymentPage: React.FC = () => {
   const navigate = useNavigate();
   const { setPaymentInfo } = usePayment();
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
-  const [qrCode, setQrCode] = useState<string>('');
-  const [orderId, setOrderId] = useState<string>('');
-  const [openDialog, setOpenDialog] = useState(false);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [orderId, setOrderId] = useState<string>('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [, setQrCode] = useState<string>('');
+  const QR_CODE_STATIC = '/images/qrcode.png';
 
+  // Lấy danh sách gói từ API
   useEffect(() => {
-    // Kiểm tra xem user đã login chưa
     const token = sessionStorage.getItem('token');
     if (!token) {
-      toast.error('Vui lòng đăng nhập trước!');
+      toast.error('Vui lòng đăng nhập!');
       navigate('/login');
-    }
-  }, [navigate]);
-
-  const resolveSubscriptionId = (pkg: Package, index?: number): number | null => {
-    if (pkg.subscriptionId !== undefined && pkg.subscriptionId !== null) {
-      const n = Number(pkg.subscriptionId);
-      return Number.isFinite(n) && n >= 0 ? n : null;
-    }
-    // fallback: nếu không có, dùng index -> +1 (hoặc map theo tên)
-    if (typeof index === 'number') return index + 1;
-    return null;
-  };
-
-  const handleSelectPackage = async (pkg: Package, index?: number) => {
-    setLoading(true);
-    try {
-      const subscriptionId = resolveSubscriptionId(pkg, index);
-      if (!subscriptionId) {
-        toast.error('Gói chọn không hợp lệ (thiếu id).');
-        setLoading(false);
-        return;
-      }
-
-      const response = await PaymentService.createPayment(
-        subscriptionId,
-        Number(pkg.price),
-        'bank_transfer'
-      );
-
-      if (response && response.success) {
-        const generatedOrderId = response.data?.transactionId || `ORDER_${Date.now()}`;
-        setOrderId(generatedOrderId);
-        setSelectedPackage(pkg);
-
-        // Thay vì dùng đường dẫn theo order, luôn dùng ảnh QR tĩnh trong public
-        // Đặt file QR tĩnh vào public/images/qr.png
-        const staticQrPath = '/images/qr.png';
-        setQrCode(staticQrPath);
-        setOpenDialog(true);
-      } else {
-        toast.error(response?.message || 'Tạo đơn thất bại');
-      }
-    } catch (error) {
-      console.error('Error creating payment:', error);
-      toast.error('Lỗi khi tạo đơn thanh toán');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConfirmPayment = async () => {
-    if (!selectedPackage || !orderId) {
-      toast.error('Thông tin thanh toán không hợp lệ');
       return;
     }
 
+    const fetchPlans = async () => {
+      try {
+        const res = await axiosInstance.get('/api/Plan/all');
+        setPlans(res.data.filter((p: Plan) => p.isActive));
+      } catch (err) {
+        console.error('Lỗi tải gói:', err);
+        toast.error('Không tải được danh sách gói');
+      }
+    };
+
+    fetchPlans();
+  }, [navigate]);
+
+  // Bước 1: Tạo Subscription → lấy subscriptionId
+  const createSubscription = async (planId: number): Promise<number | null> => {
+    try {
+      const res = await axiosInstance.post('/api/Subscription/create', { planId });
+      if (res.data && res.data.subscriptionId) {
+        toast.success('Đã tạo đăng ký thành công!');
+        return res.data.subscriptionId;
+      }
+      throw new Error('Không nhận được subscriptionId');
+    } catch (err: any) {
+      console.error('Lỗi tạo subscription:', err);
+      toast.error(err.response?.data?.message || 'Tạo đăng ký thất bại');
+      return null;
+    }
+  };
+
+  // Bước 2: Tạo Payment với subscriptionId
+  const createPayment = async (subscriptionId: number, amount: number) => {
+    const response = await PaymentService.createPayment(subscriptionId, amount, 'bank_transfer');
+
+    if (response.success && response.data && !Array.isArray(response.data)) {
+      return response.data.transactionId;
+    }
+
+    return `ORDER_${Date.now()}`;
+  };
+
+  // Xử lý khi chọn gói
+  const handleSelectPlan = async (plan: Plan) => {
     setLoading(true);
     try {
-      // Lưu thông tin thanh toán
-      setPaymentInfo({
-        packageName: selectedPackage.name,
-        price: selectedPackage.price,
-        status: 'pending',
-        orderId,
-        qrCode,
-      });
+      // Bước 1: Tạo subscription
+      const subscriptionId = await createSubscription(plan.planId);
+      if (!subscriptionId) return;
 
-      toast.success(`Đã ghi nhận thanh toán cho gói ${selectedPackage.name}. Admin sẽ xác nhận sớm!`);
-      setOpenDialog(false);
-      
-      // Chờ một chút rồi quay lại home
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
-    } catch {
-      toast.error('Lỗi khi xác nhận thanh toán');
+      // Bước 2: Tạo payment
+      const txnId = await createPayment(subscriptionId, plan.price);
+
+      // Thành công → mở dialog
+      setSelectedPlan(plan);
+      setOrderId(txnId);
+      setQrCode(QR_CODE_STATIC);
+      setOpenDialog(true);
+      toast.success('Đã tạo đơn thanh toán thành công!');
+    } catch (err) {
+      console.error('Lỗi thanh toán:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirmPayment = () => {
+    if (!selectedPlan || !orderId) return;
+
+    setPaymentInfo({
+      packageName: selectedPlan.name,
+      price: selectedPlan.price,
+      status: 'pending',
+      orderId,
+      qrCode: '/images/qr.png',
+    });
+
+    toast.success(`Đã ghi nhận thanh toán gói ${selectedPlan.name}! Admin sẽ xác nhận sớm.`);
+    setOpenDialog(false);
+    setTimeout(() => navigate('/'), 2000);
   };
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#0a0a0a' }}>
       <Header />
-      
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Box sx={{ mb: 6 }}>
-          <Typography 
-            variant="h3" 
-            sx={{ 
-              fontWeight: 'bold', 
-              mb: 2, 
-              textAlign: 'center',
-              color: '#fff',
-              fontSize: { xs: '24px', md: '36px' }
-            }}
-          >
-            Chọn Gói Thanh Toán
-          </Typography>
-          <Typography 
-            variant="body1" 
-            sx={{ 
-              textAlign: 'center', 
-              color: 'rgba(255,255,255,0.7)',
-              fontSize: '16px',
-              maxWidth: '600px',
-              mx: 'auto'
-            }}
-          >
-            Hãy chọn gói phù hợp với nhu cầu của bạn để truy cập các tính năng nâng cao
-          </Typography>
-        </Box>
 
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' }, gap: 3, mb: 6 }}>
-          {PACKAGES.map((pkg: Package) => (
-            <Box key={pkg.id}>
-              <Card
-                sx={{
-                  background: pkg.highlighted 
-                    ? 'linear-gradient(135deg, #ff4081 0%, #ff1744 100%)' 
-                    : 'rgba(255,255,255,0.05)',
-                  border: pkg.highlighted ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 2,
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  '&:hover': {
-                    transform: 'translateY(-8px)',
-                    boxShadow: pkg.highlighted 
-                      ? '0 12px 32px rgba(255, 64, 129, 0.4)'
-                      : '0 12px 32px rgba(255, 255, 255, 0.1)',
-                  }
-                }}
-              >
-                <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  {pkg.highlighted && (
-                    <Typography 
-                      sx={{ 
-                        color: '#fff', 
-                        fontSize: '12px', 
-                        fontWeight: 'bold', 
-                        mb: 1,
-                        textTransform: 'uppercase'
-                      }}
-                    >
-                      Được Chọn Nhiều Nhất
-                    </Typography>
-                  )}
-                  
-                  <Typography 
-                    variant="h5" 
-                    sx={{ 
-                      fontWeight: 'bold', 
-                      color: '#fff',
-                      mb: 1
-                    }}
-                  >
-                    {pkg.name}
+      <Container maxWidth="lg" sx={{ py: 10 }}>
+        <Typography variant="h3" sx={{ textAlign: 'center', color: '#fff', fontWeight: 'bold', mb: 2 }}>
+          Chọn Gói Thành Viên
+        </Typography>
+        <Typography variant="body1" sx={{ textAlign: 'center', color: '#ccc', mb: 6 }}>
+          Nâng cấp ngay để mở khóa toàn bộ khóa học và tính năng bảo mật cao cấp
+        </Typography>
+
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 4 }}>
+          {plans.map((plan) => (
+            <Card
+              key={plan.planId}
+              raised={plan.price === 70000}
+              sx={{
+                background: plan.price === 70000
+                  ? 'linear-gradient(135deg, #ff4081 0%, #f50057 100%)'
+                  : 'rgba(255,255,255,0.05)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 3,
+                transition: 'all 0.3s',
+                position: 'relative',
+                overflow: 'visible',
+                '&:hover': { transform: 'translateY(-12px)', boxShadow: 10 },
+              }}
+            >
+              {plan.price === 70000 && (
+                <Chip
+                  label="Phổ biến nhất"
+                  size="small"
+                  sx={{
+                    position: 'absolute',
+                    top: -12,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: '#fff',
+                    color: '#ff4081',
+                    fontWeight: 'bold',
+                  }}
+                />
+              )}
+              <CardContent sx={{ pt: 5, pb: 4 }}>
+                <Typography variant="h5" fontWeight="bold" gutterBottom>
+                  {plan.name}
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.9, mb: 3 }}>
+                  {plan.description}
+                </Typography>
+
+                <Box sx={{ my: 3 }}>
+                  <Typography variant="h3" fontWeight="bold">
+                    {plan.price.toLocaleString('vi-VN')}đ
                   </Typography>
+                  <Typography variant="body2">/{plan.billingCycle}</Typography>
+                </Box>
 
-                  <Typography 
-                    variant="h3" 
-                    sx={{ 
-                      color: '#fff', 
-                      fontWeight: 'bold',
-                      mb: 0.5
-                    }}
-                  >
-                    {pkg.price}
-                  </Typography>
+                <Box component="ul" sx={{ pl: 2, mb: 4, '& li': { mb: 1.5 } }}>
+                  {plan.features.map((f) => (
+                    <li key={f.featureId}>
+                      {f.description || f.name}
+                    </li>
+                  ))}
+                </Box>
 
-                  <Typography 
-                    sx={{ 
-                      color: 'rgba(255,255,255,0.7)', 
-                      fontSize: '12px',
-                      mb: 2
-                    }}
-                  >
-                    {pkg.duration}
-                  </Typography>
-
-                  <Box sx={{ flex: 1 }}>
-                    {pkg.features.map((feature: string, idx: number) => (
-                      <Typography 
-                        key={idx}
-                        sx={{ 
-                          color: 'rgba(255,255,255,0.8)', 
-                          fontSize: '13px',
-                          mb: 1,
-                          display: 'flex',
-                          alignItems: 'flex-start'
-                        }}
-                      >
-                        <span style={{ marginRight: '8px' }}>✓</span>
-                        <span>{feature}</span>
-                      </Typography>
-                    ))}
-                  </Box>
-
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    sx={{
-                      mt: 3,
-                      backgroundColor: pkg.highlighted ? '#fff' : '#ff4081',
-                      color: pkg.highlighted ? '#ff4081' : '#fff',
-                      fontWeight: 'bold',
-                      borderRadius: 1,
-                      '&:hover': {
-                        backgroundColor: pkg.highlighted ? 'rgba(255,255,255,0.9)' : '#ff1744',
-                      }
-                    }}
-                    onClick={() => handleSelectPackage(pkg)}
-                  >
-                    {pkg.id === 'free' ? 'Sử Dụng Miễn Phí' : 'Thanh Toán Ngay'}
-                  </Button>
-                </CardContent>
-              </Card>
-            </Box>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  disabled={loading}
+                  onClick={() => handleSelectPlan(plan)}
+                  sx={{
+                    background: plan.price === 70000 ? '#fff' : '#ff4081',
+                    color: plan.price === 70000 ? '#ff4081' : '#fff',
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      background: plan.price === 70000 ? '#fff' : '#ff1744',
+                    },
+                  }}
+                >
+                  {loading ? 'Đang xử lý...' : 'Chọn Gói Này'}
+                </Button>
+              </CardContent>
+            </Card>
           ))}
         </Box>
 
-        {/* Info section */}
-        <Paper
-          sx={{
-            p: 3,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 2,
-          }}
-        >
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              color: '#fff', 
-              fontWeight: 'bold',
-              mb: 2
-            }}
-          >
-            ℹ️ Hướng Dẫn Thanh Toán
+        {/* Hướng dẫn */}
+        <Paper sx={{ mt: 8, p: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 3 }}>
+          <Typography variant="h6" fontWeight="bold" color="#fff" mb={2}>
+            Hướng dẫn thanh toán
           </Typography>
-          <Typography 
-            sx={{ 
-              color: 'rgba(255,255,255,0.8)', 
-              lineHeight: '1.8',
-              mb: 1
-            }}
-          >
-            1. Chọn gói thanh toán phù hợp với nhu cầu của bạn
-          </Typography>
-          <Typography 
-            sx={{ 
-              color: 'rgba(255,255,255,0.8)', 
-              lineHeight: '1.8',
-              mb: 1
-            }}
-          >
-            2. Quét mã QR hoặc nhập thông tin thanh toán
-          </Typography>
-          <Typography 
-            sx={{ 
-              color: 'rgba(255,255,255,0.8)', 
-              lineHeight: '1.8',
-              mb: 1
-            }}
-          >
-            3. Hoàn tất thanh toán
-          </Typography>
-          <Typography 
-            sx={{ 
-              color: 'rgba(255,255,255,0.8)', 
-              lineHeight: '1.8'
-            }}
-          >
-            4. Admin sẽ xác nhận trong vòng 24 giờ và gửi email thông báo
+          <Typography color="#ddd" sx={{ lineHeight: 1.8 }}>
+            1. Chọn gói phù hợp<br />
+            2. Hệ thống tự động tạo đăng ký cho bạn<br />
+            3. Quét mã QR để chuyển khoản<br />
+            4. Admin xác nhận trong vòng 24h → tài khoản được kích hoạt ngay!
           </Typography>
         </Paper>
       </Container>
 
-      {/* Payment Dialog */}
-      <Dialog
-        open={openDialog}
-        onClose={() => !loading && setOpenDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ background: '#1a1a1a', color: '#fff' }}>
-          {selectedPackage?.name} - Thanh Toán
+      {/* Dialog QR */}
+      <Dialog open={openDialog} onClose={() => !loading && setOpenDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#1a1a1a', color: '#fff' }}>
+          Thanh toán {selectedPlan?.name}
         </DialogTitle>
-        <DialogContent sx={{ background: '#1a1a1a', color: '#fff' }}>
-          <Box sx={{ mt: 3 }}>
-            {loading ? (
-              <Typography sx={{ textAlign: 'center', color: 'rgba(255,255,255,0.7)' }}>
-                Đang tạo mã QR...
-              </Typography>
-            ) : qrCode ? (
-              <>
-                <Box sx={{ textAlign: 'center', mb: 3 }}>
-                  <Typography sx={{ mb: 2, fontWeight: 'bold' }}>
-                    Quét mã QR để thanh toán
-                  </Typography>
-                  <Box
-                    component="img"
-                    src={'/images/qrcode.png'} // luôn lấy ảnh từ public
-                    alt="QR Code"
-                    onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-                      // bảo đảm fallback nếu không load được
-                      const img = e.currentTarget;
-                      if (!img.dataset.fallback) {
-                        img.dataset.fallback = '1';
-                        img.src = '/images/qr.png';
-                      }
-                    }}
-                    sx={{
-                      width: '100%',
-                      maxWidth: '300px',
-                      border: '2px solid rgba(255,255,255,0.2)',
-                      borderRadius: 1,
-                      p: 1,
-                      background: '#fff'
-                    }}
-                  />
-                </Box>
-
-                <Typography sx={{ mb: 2, fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>
-                  <strong>Số tiền:</strong> {selectedPackage?.price}
-                </Typography>
-                <Typography sx={{ mb: 2, fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>
-                  <strong>Mã đơn hàng:</strong> {orderId}
-                </Typography>
-
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  label="Ghi chú (tùy chọn)"
-                  placeholder="Nhập nội dung chuyển khoản hoặc ghi chú..."
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
-                  sx={{
-                    mb: 2,
-                    '& .MuiOutlinedInput-root': {
-                      color: '#fff',
-                    },
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255,255,255,0.2)',
-                    },
-                  }}
-                />
-              </>
-            ) : null}
+        <DialogContent sx={{ bgcolor: '#1a1a1a', color: '#fff' }}>
+          <Box textAlign="center" py={2}>
+            <img
+              src="/images/qrcode.png"
+              alt="QR Thanh toán"
+              style={{ maxWidth: '280px', border: '8px solid white', borderRadius: '12px' }}
+            />
+            <Typography mt={3} fontWeight="bold">
+              Số tiền: {selectedPlan?.price.toLocaleString('vi-VN')} VNĐ
+            </Typography>
+            <Typography fontSize="14px" color="#ccc">
+              Mã đơn: {orderId}
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={2}
+              label="Ghi chú chuyển khoản (tùy chọn)"
+              value={paymentNotes}
+              onChange={(e) => setPaymentNotes(e.target.value)}
+              sx={{ mt: 3, '& .MuiOutlinedInput-root': { color: '#fff' } }}
+            />
           </Box>
         </DialogContent>
-        <DialogActions sx={{ background: '#1a1a1a', p: 2 }}>
-          <Button
-            onClick={() => setOpenDialog(false)}
-            disabled={loading}
-            sx={{ color: '#ff4081' }}
-          >
-            Đóng
+        <DialogActions sx={{ bgcolor: '#1a1a1a', p: 2 }}>
+          <Button onClick={() => setOpenDialog(false)} disabled={loading} sx={{ color: '#ff4081' }}>
+            Hủy
           </Button>
           <Button
-            onClick={handleConfirmPayment}
             variant="contained"
+            onClick={handleConfirmPayment}
             disabled={loading}
-            sx={{
-              backgroundColor: '#ff4081',
-              '&:hover': { backgroundColor: '#ff1744' }
-            }}
+            sx={{ bgcolor: '#ff4081', '&:hover': { bgcolor: '#ff1744' } }}
           >
-            {loading ? 'Đang xử lý...' : 'Xác Nhận Thanh Toán'}
+            Đã Thanh Toán
           </Button>
         </DialogActions>
       </Dialog>

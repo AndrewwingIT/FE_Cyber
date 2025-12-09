@@ -23,7 +23,6 @@ import {
 import { toast } from 'react-toastify';
 import PaymentService from '../../app/services/PaymentService';
 import type { Payment } from '../../app/models/Payment';
-import EmailService from '../../app/services/EmailService';
 
 const AdminPaymentManagement: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -97,7 +96,7 @@ const AdminPaymentManagement: React.FC = () => {
     loadPayments(status);
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -184,6 +183,7 @@ const AdminPaymentManagement: React.FC = () => {
       </Box>
     );
   }
+
 
   return (
     <Box>
