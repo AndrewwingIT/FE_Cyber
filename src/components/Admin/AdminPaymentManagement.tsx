@@ -241,7 +241,7 @@ const AdminPaymentManagement: React.FC = () => {
                   </TableCell>
                   <TableCell>{payment.subscriptionId}</TableCell>
                   <TableCell>
-                    <Chip label={`$${payment.amount.toFixed(2)}`} size="small" color="primary" variant="outlined" />
+                    <Chip label={`${payment.amount.toLocaleString('vi-VN')} VND`} size="small" color="primary" variant="outlined" />
                   </TableCell>
                   <TableCell>{payment.paymentMethod || '-'}</TableCell>
                   <TableCell>
@@ -299,7 +299,7 @@ const AdminPaymentManagement: React.FC = () => {
                 <strong>Subscription ID:</strong> {selectedPayment.subscriptionId}
               </Typography>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
-                <strong>Amount:</strong> ${selectedPayment.amount.toFixed(2)}
+                <strong>Amount:</strong> {selectedPayment.amount.toLocaleString('vi-VN')} VND
               </Typography>
               <Typography sx={{ mb: 2, fontSize: '14px', color: 'text.secondary' }}>
                 <strong>Method:</strong> {selectedPayment.paymentMethod || '-'}
